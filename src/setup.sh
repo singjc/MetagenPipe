@@ -22,6 +22,7 @@ conda install pandas -y
 conda install seaborn -y
 conda install scikit-learn -y
 conda install jupyter -y
+conda install openpyxl -y
 conda deactivate
 
 wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.10.9/sratoolkit.2.10.9-ubuntu64.tar.gz
