@@ -10,5 +10,4 @@ COPY jdk-15.0.2_linux-x64_bin.deb /misc_files/
 COPY src/setup.sh /src/
 RUN chmod +x /src/setup.sh
 RUN /src/setup.sh
-RUN echo 'export PATH="$PATH:/root/sratoolkit.2.10.9-ubuntu64/bin"' >> /root/.bashrc
 
