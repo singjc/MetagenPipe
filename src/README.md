@@ -11,6 +11,8 @@
 	- utilities for doing analysis and modeling with precompiled data
 * LogisticRegressionCV.ipynb:
 	- train logistic regression model and assess accurary for precompiled data
+* PCA.ipynb:
+	- PCA analysis of microbiome data
 
 * setup.sh:
 	- setup script called by Dockerfile
