@@ -11,6 +11,10 @@
 	- utilities for doing analysis and modeling with precompiled data
 * LogisticRegressionCV.ipynb:
 	- train logistic regression model and assess accurary for precompiled data
+* RFGridSearchCVPCA.ipynb:
+	- random forest iwht grid search of hyperparameters, using PCA dim reduction on data
+* LogisticRegressionCV_PCA.ipynb:
+	- logistic regression model with PCA dimensionality reduction on inputs
 * PCA.ipynb:
 	- PCA analysis of microbiome data
 
