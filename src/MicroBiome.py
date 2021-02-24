@@ -4,6 +4,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn import model_selection
 from sklearn.decomposition import PCA
 import copy
+from vizwiz import VizWiz
 
 # Define class for indexing data
 class MicroBiomeDataSet:
@@ -198,22 +199,31 @@ class TrainTester:
         self.score = score
         self.test_frac = test_frac
         self.rand_state = rand_state
+        self.y_train = None
+        self.y_test = None
+        self.y_train_pred = None
+        self.y_test_pred = None
         self.train_score = None
         self.test_score = None
+        
         
     def train(self, X, y):
         
         X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, 
                                                                             random_state = self.rand_state, 
                                                                             test_size = self.test_frac)
+        self.y_train = y_train 
+        self.y_test = y_test 
         self.Trainer.fit(X_train, y_train)
         y_train_pred = self.Trainer.predict(X_train)
         y_test_pred = self.Trainer.predict(X_test)
+        self.y_train_pred = y_train_pred 
+        self.y_test_pred = y_test_pred 
         self.train_score = self.score(y_train_pred, y_train)
         self.test_score = self.score(y_test_pred, y_test)
         
 
-class MultiTrainTester:
+class MultiTrainTester(VizWiz):
     
     def __init__(self, TrainTester, n_splits = 5, numpy_rand_seed = 42):
         """
@@ -225,6 +235,10 @@ class MultiTrainTester:
         self.n_splits = n_splits
         self.rand_seed = numpy_rand_seed
         self.TrainerList = []
+        self.y_train = []
+        self.y_test = []
+        self.y_train_pred = []
+        self.y_test_pred = []
         self.train_scores = []
         self.test_scores = []
         self.seeds = None
@@ -244,6 +258,10 @@ class MultiTrainTester:
             self.train_scores.append(TrainTesterCopy.train_score)
             self.test_scores.append(TrainTesterCopy.test_score)
             self.TrainerList.append(TrainTesterCopy.Trainer)
+            self.y_train.append( TrainTesterCopy.y_train )
+            self.y_test.append( TrainTesterCopy.y_test )
+            self.y_train_pred.append( TrainTesterCopy.y_train_pred )
+            self.y_test_pred.append( TrainTesterCopy.y_test_pred )
             
             
         

@@ -33,6 +33,8 @@ conda install scipy -y
 conda install pandas -y
 conda install seaborn -y
 conda install scikit-learn -y
+conda install -c conda-forge matplotlib -y
+conda install -c conda-forge scikit-plot -y
 conda install jupyter -y
 conda install openpyxl -y
 conda install pytorch -y
