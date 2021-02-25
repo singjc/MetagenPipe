@@ -175,6 +175,13 @@ class Trainer:
         X = self.transform_X(X)
         y_pred = self.model.predict(X)
         return(y_pred)
+
+    def predict_proba(self, X):
+
+        X = self.transform_X(X)
+        y_pred_proba = self.model.predict_proba(X)
+        return(y_pred_proba)
+
         
     def score(self, X, y, score):
         """
@@ -201,11 +208,12 @@ class TrainTester:
         self.rand_state = rand_state
         self.y_train = None
         self.y_test = None
+        self.y_train_pred_proba = None
+        self.y_test_pred_proba = None
         self.y_train_pred = None
         self.y_test_pred = None
         self.train_score = None
         self.test_score = None
-        
         
     def train(self, X, y):
         
@@ -215,8 +223,14 @@ class TrainTester:
         self.y_train = y_train 
         self.y_test = y_test 
         self.Trainer.fit(X_train, y_train)
-        y_train_pred = self.Trainer.predict(X_train)
-        y_test_pred = self.Trainer.predict(X_test)
+        y_train_pred_proba = self.Trainer.predict_proba(X_train)
+        y_test_pred_proba = self.Trainer.predict_proba(X_test)
+        self.y_train_pred_proba = y_train_pred_proba
+        self.y_test_pred_proba = y_test_pred_proba
+        # y_train_pred = np.where(y_train_pred_proba > 0.5, 1, 0)
+        # y_test_pred = np.where(y_test_pred_proba > 0.5, 1, 0)
+        y_train_pred = np.argmax(y_train_pred_proba, axis=1)
+        y_test_pred = np.argmax(y_test_pred_proba, axis=1)
         self.y_train_pred = y_train_pred 
         self.y_test_pred = y_test_pred 
         self.train_score = self.score(y_train_pred, y_train)
@@ -237,12 +251,31 @@ class MultiTrainTester(VizWiz):
         self.TrainerList = []
         self.y_train = []
         self.y_test = []
+        self.y_train_pred_proba = []
+        self.y_test_pred_proba = []
         self.y_train_pred = []
         self.y_test_pred = []
         self.train_scores = []
         self.test_scores = []
         self.seeds = None
-        
+
+    def buildEncoder(self, classLabels):
+        """
+            Build and Encoder mapping
+            
+            Constructs a dictionary that maps each class label to a list 
+            where one entry in the list is 1 and the remainder are 0
+        """
+        encodingLength = len(classLabels)
+        encoder = {}
+        mapper = {}
+        for i, label in enumerate(classLabels):
+            encoding = [0] * encodingLength
+            encoding[i] = 1
+            encoder[label] = encoding
+            mapper[label] = i
+        return encoder, mapper
+    
     def train(self, X, y):
         
         np.random.seed(self.rand_seed)
@@ -260,6 +293,8 @@ class MultiTrainTester(VizWiz):
             self.TrainerList.append(TrainTesterCopy.Trainer)
             self.y_train.append( TrainTesterCopy.y_train )
             self.y_test.append( TrainTesterCopy.y_test )
+            self.y_train_pred_proba.append( TrainTesterCopy.y_train_pred_proba )
+            self.y_test_pred_proba.append( TrainTesterCopy.y_test_pred_proba )
             self.y_train_pred.append( TrainTesterCopy.y_train_pred )
             self.y_test_pred.append( TrainTesterCopy.y_test_pred )
             
