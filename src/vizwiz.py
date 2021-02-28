@@ -32,7 +32,7 @@ class VizWiz:
         """
             Plot a confusion matrix
         """
-        fig = plt.figure(num=None, figsiz=figsize, dpi=dpi)
+        fig = plt.figure(num=None, figsize=figsize, dpi=dpi)
         i=1
         for row in range(len(self.y_train)):
             skpm.plot_confusion_matrix(y_true=self.y_train[row], y_pred=self.y_train_pred[row], title=f"Train Set (n_split={row+1})", ax=fig.add_subplot(len(self.y_train),2,i), **args)
