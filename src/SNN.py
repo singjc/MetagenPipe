@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import pairwise_distances
 import numpy as np
 import pandas as pd
+import datetime
 
 
 
@@ -193,7 +194,7 @@ class SiameseModel:
         self.model = model
         self.logistic = LinearSoftMax(inp_size=model.out_size*2, out_size=2)
         self.update_encoder = update_encoder
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        self.optimizer = torch.optim.Adam((self.model.parameters(), self.logistic.parameters()), lr=learning_rate, weight_decay=weight_decay)
         self.batch_size = batch_size
         self.num_epochs = num_epochs
         self.rand_seed = rand_seed
@@ -242,14 +243,30 @@ class SiameseModel:
         """
         :param X: mxn matrix
         :param y: mxc one-hot encoded class matrix
-        :return:
-
-        TODO: finish training loop
+        :return: object with encoder in model attribute updated
         """
         if not self.validation_frac is None:
             self.__splitData()
         else:
             self.TrainData = self.__makeDS(X, y)
+
+        for i in range(self.num_epochs):
+            print('#########################################')
+            print('Epoch {0} of {1}'.format(i, self.num_epochs))
+            print('__Training__')
+            now = datetime.datetime.now()
+            print(now.strftime("%Y-%m-%d %H:%M:%S"))
+            self.run_epoch(mode='Train')
+            if not self.validation_frac is None:
+                print('__Validation__')
+                now = datetime.datetime.now()
+                print(now.strftime("%Y-%m-%d %H:%M:%S"))
+                self.run_epoch(mode='Val')
+
+        print('#########################################')
+        print('Finished')
+        now = datetime.datetime.now()
+        print(now.strftime("%Y-%m-%d %H:%M:%S"))
 
     def __check_n_classes(self, y, thresh):
         n_per_class = torch.sum(y, axis=1)
@@ -260,76 +277,6 @@ class SiameseModel:
             for ind in lt_inds:
                 msg = msg + ' ' + str(ind)
             raise ValueError(msg)
-
-    def pairwise_dists(self, X):
-        """
-        Compute euclidean distances between all vectors in X
-        :param X:
-        :return:
-        """
-        return_torch = False
-        if isinstance(X, torch.tensor):
-            return_torch = True
-            X = X.to_numpy()
-
-        dist_mat = pairwise_distances(X, metric = 'euclidean')
-        if return_torch:
-            dist_mat = torch.tensor(dist_mat)
-
-        return dist_mat
-
-    def __makeDataBase(self, X, y):
-        """
-
-        :param X:
-        :param y:
-        :return:
-        """
-        # checks if we have requisite examples per each class to make a prediction
-        self.__check_n_classes(y, self.n_example_predict)
-        class_inds = np.array([])
-        class_inds_list = []
-        for i in range(y.shape[1]):
-            class_i_inds = np.where(np.equal(y[:,i], 1))
-            np.random.seed(self.rand_seed)
-            class_i_selected = np.random.choice(class_i_inds, size=self.n_example_predict)
-            class_inds = np.concatenate(class_inds, class_i_selected)
-            class_inds_list = class_inds_list.append(class_i_selected)
-
-        X_subs = X[class_inds, :]
-        y_subs = y[class_inds, :]
-        X_out_subs = self.model.forward(X_subs)
-
-        self.ClassDB = {}
-        self.ClassDB['X_encoded'] = X_out_subs
-        self.ClassDB['y'] = y_subs
-
-        if self.max_dist is None:
-
-            dist = self.pairwise_dists(X_out_subs)
-            # find 95th percentile of intraclass distances
-            intraclass_dists = torch.tensor([])
-            for idx_class in class_inds_list:
-                dist_class = dist[idx_class, idx_class]
-                triu_class = torch.triu_indices(dist_class.shape[0], dist_class.shape[1], offset=1)
-                dist_class_values = torch.flatten(dist_class[triu_class[0, :], triu_class[1, :]])
-                torch.cat((intraclass_dists, dist_class_values))
-
-            intraclass_95th = torch.from_numpy(np.percentile(intraclass_dists, 95))
-            self.ClassDB['intraclass_dists'] = intraclass_dists
-            # find 5th percentile of interclass dists
-            interclass_dists = torch.tensor([])
-            for i in range(len(class_inds_list) - 1):
-                idx_i = class_inds_list[i]
-                for j in range(i + 1, len(class_inds_list)):
-                    idx_j = class_inds_list[j]
-                    dists_i_j = torch.flatten(dist[idx_i, idx_j])
-                    interclass_dists = torch.cat((interclass_dists, dists_i_j))
-
-            self.ClassDB['interclass_dists'] = interclass_dists
-            interclass_5th = torch.from_numpy(np.percentile(interclass_dists, 5))
-            self.max_dist = torch.min(torch.cat((intraclass_95th, interclass_5th)))
-
 
     def __makeDS(self, X, y, size, rand_seed):
         """
@@ -358,7 +305,7 @@ class SiameseModel:
         TrainDS, TrainDL = self.__makeDS(X_train, y_train, size = train_size, rand_seed=self.rand_seed)
         self.TrainData = TrainDS
         self.TrainDataLoader = TrainDL
-        ValDS, ValDL = self.__makeDS(X_train, y_train, size=train_size, rand_seed=self.rand_seed)
+        ValDS, ValDL = self.__makeDS(X_val, y_val, size=val_size, rand_seed=self.rand_seed)
         self.ValData = ValDS
         self.ValDL = ValDL
 
@@ -404,6 +351,76 @@ class SiameseModel:
         loss_total_mean = total_loss.divide(float(total_samples))
         return loss_total_mean
 
+    def pairwise_dists(self, X):
+        """
+        Compute euclidean distances between all vectors in X
+        :param X:
+        :return:
+        """
+        return_torch = False
+        if isinstance(X, torch.tensor):
+            return_torch = True
+            X = X.to_numpy()
+
+        dist_mat = pairwise_distances(X, metric = 'euclidean')
+        if return_torch:
+            dist_mat = torch.tensor(dist_mat)
+
+        return dist_mat
+
+    def __makeDataBase(self, X, y):
+        """
+
+        :param X:
+        :param y:
+        :return:
+        """
+        # checks if we have requisite examples per each class to make a prediction
+        self.__check_n_classes(y, self.n_example_predict)
+        class_inds = np.array([])
+        class_inds_list = []
+        for i in range(y.shape[1]):
+            class_i_inds = np.where(np.equal(y[:,i], 1))
+            np.random.seed(self.rand_seed)
+            class_i_selected = np.random.choice(class_i_inds, size=self.n_example_predict)
+            class_inds = np.concatenate(class_inds, class_i_selected)
+            class_inds_list = class_inds_list.append(class_i_selected)
+
+        X_subs = X[class_inds, :]
+        y_subs = y[class_inds, :]
+        X_out_subs = self.model.forward(X_subs)
+
+        self.ClassDB = {}
+        self.ClassDB['X_encoded'] = X_out_subs
+        self.ClassDB['y'] = y_subs
+
+        dist = self.pairwise_dists(X_out_subs)
+        # find 95th percentile of intraclass distances
+        intraclass_dists = torch.tensor([])
+
+        for idx_class in class_inds_list:
+            dist_class = dist[idx_class, idx_class]
+            triu_class = torch.triu_indices(dist_class.shape[0], dist_class.shape[1], offset=1)
+            dist_class_values = torch.flatten(dist_class[triu_class[0, :], triu_class[1, :]])
+            torch.cat((intraclass_dists, dist_class_values))
+
+        intraclass_95th = torch.from_numpy(np.percentile(intraclass_dists, 95))
+        self.ClassDB['intraclass_dists'] = intraclass_dists
+        # find 5th percentile of interclass dists
+        interclass_dists = torch.tensor([])
+
+        for i in range(len(class_inds_list) - 1):
+            idx_i = class_inds_list[i]
+            for j in range(i + 1, len(class_inds_list)):
+                idx_j = class_inds_list[j]
+                dists_i_j = torch.flatten(dist[idx_i, idx_j])
+                interclass_dists = torch.cat((interclass_dists, dists_i_j))
+
+        if self.max_dist is None:
+            self.ClassDB['interclass_dists'] = interclass_dists
+            interclass_5th = torch.from_numpy(np.percentile(interclass_dists, 5))
+            self.max_dist = torch.min(torch.cat((intraclass_95th, interclass_5th)))
+
     def predict(self, X):
         """
         Make prediction on X. KNN
@@ -412,6 +429,8 @@ class SiameseModel:
 
         TODO: finish prediction step
         """
+
+
 
 
 
