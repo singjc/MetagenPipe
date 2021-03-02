@@ -5,6 +5,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import pairwise_distances
+from sklearn.neighbors import KNeighborsClassifier
 import numpy as np
 import pandas as pd
 import datetime
@@ -153,8 +154,9 @@ class SiameseModel:
     """
     Siamese Neural Network, modeled off of sklearn model API
     """
-    def __init__(self, model, update_encoder=True, learning_rate=1e-3,weight_decay=1e-5, batch_size=1000, num_epochs=5, rand_seed=42, class_min_train=10,
-                 n_example_predict=20, max_dist=None, train_size=20000, validation_frac=0.10):
+    def __init__(self, model, update_encoder=True, predict_unkown=True, learning_rate=1e-3,weight_decay=1e-5,
+                 batch_size=1000, num_epochs=5, rand_seed=42, class_min_train=10,
+                 n_example_predict=20, k=5, max_dist=None, train_size=20000, validation_frac=0.10):
         """
         Initialize Object
 
@@ -177,6 +179,7 @@ class SiameseModel:
         :param update_encoder: update encoder, i.e. run siamese NN training. If set to False, skip siamese NN training
         when self.fit(X,y) called, and instead encode data into latent space and make predictions based on encoder's
         current values. False setting useful for assessing if latent space can distinguish unseen classes.
+        :param predict_unknown: boolean. Whether or not to
         :param learning_rate: learning rate
         :param weight_decay: see docs for pytorch adam optimizer. L2 penalty on params
         :param batch_size: batch size for training + validation
@@ -184,7 +187,8 @@ class SiameseModel:
         :param rand_seed: random seed for splitting data, selecting examples for the predict function.
         :param class_min_train: minimum necessary examples necessary for training and validation sets
         :param n_example_predict: examples to select per class for the predict function
-        :param max_dist: maximum distance between 2 classes. If minimum distance to any class is > max_dist,
+        :param k: number of nearest neighbors in KNN to predict classes.
+        :param max_dist: maximum distance between 2 classes. If median distance to predicted class is > max_dist,
                 query fed to .predict method is given 'unclassified' status. See note above for automatic determination
                 of max_dist if max_dist set to None.
         :param train_size: number of training triplets to make. number of validation triplets is np.floor(train_size*(validation_frac)/(1-validation_frac)
@@ -194,12 +198,14 @@ class SiameseModel:
         self.model = model
         self.logistic = LinearSoftMax(inp_size=model.out_size*2, out_size=2)
         self.update_encoder = update_encoder
+        self.predict_unknown = predict_unkown
         self.optimizer = torch.optim.Adam((self.model.parameters(), self.logistic.parameters()), lr=learning_rate, weight_decay=weight_decay)
         self.batch_size = batch_size
         self.num_epochs = num_epochs
         self.rand_seed = rand_seed
         self.class_min_train = class_min_train
         self.n_example_predict = n_example_predict
+        self.k = k
         self.max_dist = max_dist
         self.train_size = train_size
         self.validation_frac = validation_frac
@@ -406,6 +412,7 @@ class SiameseModel:
 
         intraclass_95th = torch.from_numpy(np.percentile(intraclass_dists, 95))
         self.ClassDB['intraclass_dists'] = intraclass_dists
+
         # find 5th percentile of interclass dists
         interclass_dists = torch.tensor([])
 
@@ -416,19 +423,64 @@ class SiameseModel:
                 dists_i_j = torch.flatten(dist[idx_i, idx_j])
                 interclass_dists = torch.cat((interclass_dists, dists_i_j))
 
+        self.ClassDB['interclass_dists'] = interclass_dists
+        interclass_5th = torch.from_numpy(np.percentile(interclass_dists, 5))
+
         if self.max_dist is None:
-            self.ClassDB['interclass_dists'] = interclass_dists
-            interclass_5th = torch.from_numpy(np.percentile(interclass_dists, 5))
             self.max_dist = torch.min(torch.cat((intraclass_95th, interclass_5th)))
 
     def predict(self, X):
         """
-        Make prediction on X. KNN
+        Make prediction on X. NOTE:
         :param X:
-        :return:
+        :return: matrix of shape (X.shape[0], n_classes) or (X.shape[0], n_classes + 1) if predict_unknown set to True
 
-        TODO: finish prediction step
         """
+        is_numpy = False
+        is_tensor = False
+        if isinstance(X, np.ndarray):
+            is_numpy = True
+            X = torch.from_numpy(X)
+        elif isinstance(X, torch.tensor):
+            is_tensor = True
+        else:
+            raise TypeError('Expect 2D np.ndarray or tensor')
+
+        X = self.model.forward(X)
+        X = X.numpy()
+
+        X_DB = self.ClassDB['X_encoded'].numpy()
+        y_DB = self.ClassDB['y'].numpy()
+
+        n_samples = X_DB.shape[0]
+        n_classes = y_DB.shape[1]
+
+        KNN_clf = KNeighborsClassifier(n_neighbors=self.k, metric='minkowski', p=2)
+        KNN_clf.fit(X_DB, y_DB)
+        y_pred = KNN_clf.predict(X)
+
+        if self.predict_unknown:
+
+            print('Classifying outlier samples as unknown. output will have 1 additional class column')
+
+            is_unknown = np.repeat(0, n_samples)
+
+            for i in range(n_samples):
+                class_i = np.where(np.equal(y_pred[i, :], 1))[0]
+                class_inds = np.where(np.equal(y_DB[:, class_i], 1))[0]
+                diff = X[i,:] - X_DB[class_inds, :]
+                class_dists = np.sqrt(np.diag(np.matmul(diff, diff.T)))
+                median_dist = np.median(class_dists)
+
+                if median_dist > self.max_dist:
+                    y_pred[i, class_i] = 0
+                    is_unknown[i] = 1
+            # turn is_unknown into a column vector and append to y_pred
+            is_unknown = is_unknown.reshape((len(is_unknown, 1)))
+            y_pred = np.concatenate((y_pred, is_unknown))
+
+        return y_pred
+
 
 
 
