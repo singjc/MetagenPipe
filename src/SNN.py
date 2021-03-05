@@ -23,13 +23,13 @@ class FeedForward(nn.Module):
         :param hidden_layer_sizes: Output sizes of hidden layers. Size of last hidden layer
         gives output size
         """
-
+        super(FeedForward, self).__init__()
         self.layers = nn.ModuleList()
         self.inp_size = inp_size
         self.out_size = hidden_layer_sizes[len(hidden_layer_sizes) - 1]
         fc_in_size = inp_size
         for s in hidden_layer_sizes:
-            fc_s = nn.Linear(in_features=fc_in_size, out_features=s)
+            fc_s = nn.Linear(in_features=fc_in_size, out_features=s).to(torch.float32)
             self.layers.append(fc_s)
             fc_in_size = s
 
@@ -47,8 +47,8 @@ class FeedForward(nn.Module):
 class LinearSoftMax(nn.Module):
 
     def __init__(self, inp_size, out_size = 2):
-
-        self.fc1 = nn.Linear(in_features=inp_size, out_features=out_size)
+        super(LinearSoftMax, self).__init__()
+        self.fc1 = nn.Linear(in_features=inp_size, out_features=out_size).to(torch.float32)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, X):
@@ -71,35 +71,40 @@ class SiameseDataSet(Dataset):
         :param size: size of random sample to take. Sampling done with replacement
         :param return_encoded: If True, return encoded data, if false, return non-encoded data
         """
-        super.__init__()
 
         if not X.shape[0] == y.shape[0]:
             raise ValueError('number of samples in X ' + X.shape[0] + ' does not match number of samples in y ' + y.shape[0])
-        m = self.X.shape[0]
+        m = X.shape[0]
         self.size = size
         self.X = X
         self.y = y
         self.encoder = encoder
         self.return_encoded = return_encoded
-        np.set_seed(rand_seed)
+        np.random.seed(rand_seed)
         all_inds = np.random.randint(0, m, 2*size)
         # randomly chosen indexes for X1 and X2
         self.X1_inds = all_inds[0:size]
         self.X2_inds = all_inds[size:len(all_inds)]
         # samples of X given randomly chosen indices
-        self.X1 = self.X[self.X1_inds, :]
-        self.X2 = self.X[self.X2_inds, :]
+        self.X1 = self.X[self.X1_inds, :].clone().detach()
+        self.X2 = self.X[self.X2_inds, :].clone().detach()
         # vector c returns whether or not 2 class vectors corresponding to X1 and X2 are of the same class
-        self.c = torch.tensor([np.all(np.equal(self.y[self.X1_inds[i], :].numpy() == self.y[self.X2_inds[i], :].numpy())) for i in range(size)])
+        c = []
+        self.c = torch.tensor([np.all(np.equal(self.y[self.X1_inds[i], :].numpy(), self.y[self.X2_inds[i], :].numpy())) for i in range(size)]).to(torch.float32)
         self.X_out = None
         self.X1_out = None
         self.X2_out = None
+#         print(self.X.dtype)
+#         print(self.X1.dtype)
+#         print(self.X2.dtype)
+#         print(self.c.dtype)
 
     def run_forward(self):
         """
         Run forward pass of NN on X.
         :return: object is modified with self.X1_out, self.X2_out updated
         """
+#         print(self.X.dtype)
         self.X_out = self.encoder.forward(self.X)
         self.X1_out = self.X_out[self.X1_inds, :]
         self.X2_out = self.X_out[self.X2_inds, :]
@@ -154,7 +159,7 @@ class SiameseModel:
     """
     Siamese Neural Network, modeled off of sklearn model API
     """
-    def __init__(self, model, update_encoder=True, predict_unkown=True, learning_rate=1e-3,weight_decay=1e-5,
+    def __init__(self, model, update_encoder=True, predict_unknown=True, learning_rate=1e-3,weight_decay=1e-5,
                  batch_size=1000, num_epochs=5, rand_seed=42, class_min_train=10,
                  n_example_predict=20, k=5, max_dist=None, train_size=20000, validation_frac=0.10):
         """
@@ -198,8 +203,8 @@ class SiameseModel:
         self.model = model
         self.logistic = LinearSoftMax(inp_size=model.out_size*2, out_size=2)
         self.update_encoder = update_encoder
-        self.predict_unknown = predict_unkown
-        self.optimizer = torch.optim.Adam((self.model.parameters(), self.logistic.parameters()), lr=learning_rate, weight_decay=weight_decay)
+        self.predict_unknown = predict_unknown
+        self.optimizer = torch.optim.Adam((list(self.model.parameters()) + list(self.logistic.parameters())), lr=learning_rate, weight_decay=weight_decay)
         self.batch_size = batch_size
         self.num_epochs = num_epochs
         self.rand_seed = rand_seed
@@ -214,20 +219,15 @@ class SiameseModel:
         self.ValData = None
         self.ValDL = None
         self.ClassDB = None
-
-    def fit(self, X, y):
-        """
-        Notes: first fits siamese NN
-        :param X:
-        :param y:
-        :return: SiameseModel object is fit, with database of class examples set up.
-        """
-        if not isinstance(X, torch.tensor):
+        
+    def __process_Xy(self, X, y):
+        
+        if not isinstance(X, torch.Tensor):
             try:
                 X = torch.from_numpy(X)
             except:
                 raise TypeError('X must be 2D pytorch tensor or numpy ndarray')
-        if not isinstance(y, torch.tensor):
+        if not isinstance(y, torch.Tensor):
             try:
                 y = torch.from_numpy(y)
             except:
@@ -238,7 +238,23 @@ class SiameseModel:
 
         if not len(y.shape) == 2:
             raise ValueError('y must be 2D ndarray or tensor')
+        
+        X = X.to(torch.float32)
+        y = y.to(torch.int32)
+        
+        return X, y
 
+    def fit(self, X, y):
+        """
+        Notes: first fits siamese NN
+        :param X:
+        :param y:
+        :return: SiameseModel object is fit, with database of class examples set up.
+        """
+        torch.manual_seed(self.rand_seed)
+        # convert to float32 tensor
+        X, y = self.__process_Xy(X, y)
+        
         if self.update_encoder:
             self.__trainEncoder(X, y)
 
@@ -251,14 +267,17 @@ class SiameseModel:
         :param y: mxc one-hot encoded class matrix
         :return: object with encoder in model attribute updated
         """
+
         if not self.validation_frac is None:
-            self.__splitData()
+            self.__splitData(X, y)
         else:
             self.TrainData = self.__makeDS(X, y)
-
+        
+#         print(X.dtype)
+#         print(y.dtype)
         for i in range(self.num_epochs):
             print('#########################################')
-            print('Epoch {0} of {1}'.format(i, self.num_epochs))
+            print('Epoch {0} of {1}'.format(i + 1, self.num_epochs))
             print('__Training__')
             now = datetime.datetime.now()
             print(now.strftime("%Y-%m-%d %H:%M:%S"))
@@ -275,10 +294,11 @@ class SiameseModel:
         print(now.strftime("%Y-%m-%d %H:%M:%S"))
 
     def __check_n_classes(self, y, thresh):
-        n_per_class = torch.sum(y, axis=1)
-        lt_thresh = np.less(n_per_class, thresh)
-        if np.any(lt_thresh):
-            lt_inds = np.where(lt_thresh)
+        # y is expected to be a tensor
+        n_per_class = torch.sum(y, axis=0)
+        lt_thresh = torch.less(n_per_class, thresh)
+        if torch.any(lt_thresh):
+            lt_inds = torch.where(lt_thresh)
             msg = 'following classes have less than required number of examples per class:'
             for ind in lt_inds:
                 msg = msg + ' ' + str(ind)
@@ -301,16 +321,16 @@ class SiameseModel:
         :return: object is modified with TrainData and ValData set
         """
         np.random.seed(self.rand_seed)
-        X_train, y_train, X_val, y_val = train_test_split(X.numpy(), y.numpy(), stratify=y.numpy())
+        X_train, X_val, y_train, y_val = train_test_split(X.numpy(), y.numpy(), stratify=y.numpy())
         X_train = torch.from_numpy(X_train)
         y_train = torch.from_numpy(y_train)
         X_val = torch.from_numpy(X_val)
         y_val = torch.from_numpy(y_val)
         train_size = self.train_size
-        val_size = np.floor(train_size*(self.validation_frac/(1. - self.validation_frac)))
+        val_size = int(np.floor(train_size*(self.validation_frac/(1. - self.validation_frac))))
         TrainDS, TrainDL = self.__makeDS(X_train, y_train, size = train_size, rand_seed=self.rand_seed)
         self.TrainData = TrainDS
-        self.TrainDataLoader = TrainDL
+        self.TrainDL = TrainDL
         ValDS, ValDL = self.__makeDS(X_val, y_val, size=val_size, rand_seed=self.rand_seed)
         self.ValData = ValDS
         self.ValDL = ValDL
@@ -335,24 +355,32 @@ class SiameseModel:
         # first forward pass
         DS.run_forward()
 
-        loss_fun = torch.BCELoss(reduction = 'sum')
+        loss_fun = torch.nn.BCELoss(reduction = 'sum')
         total_loss = 0
 
         total_samples = len(DS)
-
+        m = 0
         for batch_i in DL:
             self.optimizer.zero_grad()
-            X1 = batch_i['X1']
-            X2 = batch_i['X2']
+            X1 = torch.flatten(batch_i['X1'], start_dim = 1)
+            X2 = torch.flatten(batch_i['X2'], start_dim = 1)
             c = batch_i['c']
             # note that logistic regression step implemented as a softmax on a linear layer outputting 2 features.
             # logistic function equivalent to softmax on 2 classes
-            logistic_output = self.logistic(torch.cat([X1, X2], axis=1))
+            X_cat = torch.cat([X1, X2], dim=1)
+            logistic_output = self.logistic(X_cat)
             loss = loss_fun(logistic_output[:, 1], c)
             total_loss += loss
             loss_batch_mean = loss.divide(float(len(c)))
+            print('Batch Mean Loss: {}'.format(loss_batch_mean))
             if mode == 'Train':
-                loss_batch_mean.backward()
+#                 if m == 0:
+#                     do_retain_graph = True
+#                 else:
+#                     do_retain_graph = False
+#                 loss_batch_mean.backward(retain_graph=do_retain_graph)
+                self.optimizer.step()
+                m = 1
 
         loss_total_mean = total_loss.divide(float(total_samples))
         return loss_total_mean
@@ -364,9 +392,9 @@ class SiameseModel:
         :return:
         """
         return_torch = False
-        if isinstance(X, torch.tensor):
+        if isinstance(X, torch.Tensor):
             return_torch = True
-            X = X.to_numpy()
+            X = X.detach().numpy()
 
         dist_mat = pairwise_distances(X, metric = 'euclidean')
         if return_torch:
@@ -377,23 +405,29 @@ class SiameseModel:
     def __makeDataBase(self, X, y):
         """
 
-        :param X:
-        :param y:
-        :return:
+        :param X: mxn matrix of samples x features
+        :param y: mxp matrix of binarized class labels
+        :return: fill selff.ClassDB slot to have encoded coordinates of X and corresponding class labels y
         """
         # checks if we have requisite examples per each class to make a prediction
         self.__check_n_classes(y, self.n_example_predict)
         class_inds = np.array([])
         class_inds_list = []
+        m = 0
         for i in range(y.shape[1]):
-            class_i_inds = np.where(np.equal(y[:,i], 1))
+            class_i_inds = np.where(np.equal(y[:,i], 1))[0]
+#             print(class_i_inds[0].shape)
+#             print(class_i_inds[1].shape)
             np.random.seed(self.rand_seed)
             class_i_selected = np.random.choice(class_i_inds, size=self.n_example_predict)
-            class_inds = np.concatenate(class_inds, class_i_selected)
-            class_inds_list = class_inds_list.append(class_i_selected)
+            class_inds = np.concatenate((class_inds, class_i_selected))
+            m_end = m + self.n_example_predict
+            class_inds_list.append(torch.from_numpy(np.arange(m, m_end)))
+            m = m_end
 
         X_subs = X[class_inds, :]
         y_subs = y[class_inds, :]
+        
         X_out_subs = self.model.forward(X_subs)
 
         self.ClassDB = {}
@@ -401,16 +435,28 @@ class SiameseModel:
         self.ClassDB['y'] = y_subs
 
         dist = self.pairwise_dists(X_out_subs)
+#         print(dist)
         # find 95th percentile of intraclass distances
         intraclass_dists = torch.tensor([])
-
+#         print(dist.shape)
         for idx_class in class_inds_list:
-            dist_class = dist[idx_class, idx_class]
+#             print(idx_class.shape)
+#             print(idx_class)
+            dist_class = dist[:, idx_class]
+            dist_class = dist_class[idx_class, :]
+#             print(dist_class)
+#             print(dist_class.shape)
             triu_class = torch.triu_indices(dist_class.shape[0], dist_class.shape[1], offset=1)
+#             print(triu_class)
+#             print(triu_class.shape)
             dist_class_values = torch.flatten(dist_class[triu_class[0, :], triu_class[1, :]])
-            torch.cat((intraclass_dists, dist_class_values))
-
-        intraclass_95th = torch.from_numpy(np.percentile(intraclass_dists, 95))
+            print(dist_class_values.shape)
+            intraclass_dists = torch.cat((intraclass_dists, dist_class_values))
+            
+            
+#         print(intraclass_dists)
+#         print(intraclass_dists.detach().numpy())
+        intraclass_95th = torch.tensor([np.percentile(intraclass_dists.detach().numpy(), 95)]).to(torch.float32)
         self.ClassDB['intraclass_dists'] = intraclass_dists
 
         # find 5th percentile of interclass dists
@@ -420,11 +466,13 @@ class SiameseModel:
             idx_i = class_inds_list[i]
             for j in range(i + 1, len(class_inds_list)):
                 idx_j = class_inds_list[j]
-                dists_i_j = torch.flatten(dist[idx_i, idx_j])
+                dists_i_j = dist[idx_i, :]
+                dists_i_j = dist[:, idx_j]
+                dists_i_j = torch.flatten(dists_i_j)
                 interclass_dists = torch.cat((interclass_dists, dists_i_j))
 
         self.ClassDB['interclass_dists'] = interclass_dists
-        interclass_5th = torch.from_numpy(np.percentile(interclass_dists, 5))
+        interclass_5th = torch.tensor([np.percentile(intraclass_dists.detach().numpy(), 5)]).to(torch.float32)
 
         if self.max_dist is None:
             self.max_dist = torch.min(torch.cat((intraclass_95th, interclass_5th)))
@@ -440,19 +488,19 @@ class SiameseModel:
         is_tensor = False
         if isinstance(X, np.ndarray):
             is_numpy = True
-            X = torch.from_numpy(X)
-        elif isinstance(X, torch.tensor):
+            X = torch.from_numpy(X).to(torch.float32)
+        elif isinstance(X, torch.Tensor):
             is_tensor = True
         else:
             raise TypeError('Expect 2D np.ndarray or tensor')
 
         X = self.model.forward(X)
-        X = X.numpy()
+        X = X.detach().numpy()
 
-        X_DB = self.ClassDB['X_encoded'].numpy()
-        y_DB = self.ClassDB['y'].numpy()
+        X_DB = self.ClassDB['X_encoded'].detach().numpy()
+        y_DB = self.ClassDB['y'].detach().numpy()
 
-        n_samples = X_DB.shape[0]
+        n_samples = X.shape[0]
         n_classes = y_DB.shape[1]
 
         KNN_clf = KNeighborsClassifier(n_neighbors=self.k, metric='minkowski', p=2)
@@ -476,8 +524,52 @@ class SiameseModel:
                     y_pred[i, class_i] = 0
                     is_unknown[i] = 1
             # turn is_unknown into a column vector and append to y_pred
-            is_unknown = is_unknown.reshape((len(is_unknown, 1)))
-            y_pred = np.concatenate((y_pred, is_unknown))
+            is_unknown = is_unknown.reshape((len(is_unknown), 1))
+            print(y_pred.shape)
+            print(is_unknown.shape)
+            y_pred = np.concatenate((y_pred, is_unknown), axis = 1)
+            
+        if is_tensor:
+            # return tensor if tensor input. return numpy otherwise
+            y_pred = torch.from_numpy(y_pred)
+
+        return y_pred
+    
+    def predict_proba(self, X):
+        """
+        Make prediction on X. Uses KNN classifier.
+        TODO: potentially replace with logistic regression based comparison of vectors
+        to obtain SNN based probability
+        :param X:
+        :return: matrix of shape (X.shape[0], n_classes)
+
+        """
+        is_numpy = False
+        is_tensor = False
+        if isinstance(X, np.ndarray):
+            is_numpy = True
+            X = torch.from_numpy(X).to(torch.float32)
+        elif isinstance(X, torch.Tensor):
+            is_tensor = True
+        else:
+            raise TypeError('Expect 2D np.ndarray or tensor')
+
+        X = self.model.forward(X)
+        X = X.detach().numpy()
+
+        X_DB = self.ClassDB['X_encoded'].detach().numpy()
+        y_DB = self.ClassDB['y'].detach().numpy()
+
+        n_samples = X.shape[0]
+        n_classes = y_DB.shape[1]
+
+        KNN_clf = KNeighborsClassifier(n_neighbors=self.k, metric='minkowski', p=2)
+        KNN_clf.fit(X_DB, y_DB)
+        y_pred = KNN_clf.predict_proba(X)
+            
+        if is_tensor:
+            # return tensor if tensor input. return numpy otherwise
+            y_pred = torch.from_numpy(y_pred)
 
         return y_pred
 
