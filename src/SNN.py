@@ -62,7 +62,7 @@ class SiameseDataSet(Dataset):
     """
     Dataset for training a siamese neural net
     """
-    def __init__(self, X, y, encoder, size=20000, return_encoded=True, rand_seed=42):
+    def __init__(self, X, y, encoder, size=20000, return_encoded=False, rand_seed=42):
         """
         Initialization.
         :param X: mxn matrix of vectors. a 2D tensor
@@ -91,7 +91,6 @@ class SiameseDataSet(Dataset):
         # vector c returns whether or not 2 class vectors corresponding to X1 and X2 are of the same class
         c = []
         self.c = torch.tensor([np.all(np.equal(self.y[self.X1_inds[i], :].numpy(), self.y[self.X2_inds[i], :].numpy())) for i in range(size)]).to(torch.float32)
-        self.X_out = None
         self.X1_out = None
         self.X2_out = None
 #         print(self.X.dtype)
@@ -104,10 +103,8 @@ class SiameseDataSet(Dataset):
         Run forward pass of NN on X.
         :return: object is modified with self.X1_out, self.X2_out updated
         """
-#         print(self.X.dtype)
-        self.X_out = self.encoder.forward(self.X)
-        self.X1_out = self.X_out[self.X1_inds, :]
-        self.X2_out = self.X_out[self.X2_inds, :]
+        self.X1_out = self.encoder.forward(self.X1)
+        self.X2_out = self.encoder.forward(self.X2)
 
     def __getitem__(self, idx):
         """
@@ -251,7 +248,7 @@ class SiameseModel:
         :param y:
         :return: SiameseModel object is fit, with database of class examples set up.
         """
-        torch.manual_seed(self.rand_seed)
+#         torch.manual_seed(self.rand_seed)
         # convert to float32 tensor
         X, y = self.__process_Xy(X, y)
         
@@ -281,12 +278,14 @@ class SiameseModel:
             print('__Training__')
             now = datetime.datetime.now()
             print(now.strftime("%Y-%m-%d %H:%M:%S"))
-            self.run_epoch(mode='Train')
+            mean_loss = self.run_epoch(mode='Train')
+            print('MEAN LOSS: {}'.format(mean_loss))
             if not self.validation_frac is None:
                 print('__Validation__')
                 now = datetime.datetime.now()
                 print(now.strftime("%Y-%m-%d %H:%M:%S"))
-                self.run_epoch(mode='Val')
+                mean_loss = self.run_epoch(mode='Val')
+                print('MEAN LOSS: {}'.format(mean_loss))
 
         print('#########################################')
         print('Finished')
@@ -311,7 +310,7 @@ class SiameseModel:
         :return:
         """
         self.__check_n_classes(y, self.class_min_train)
-        DS = SiameseDataSet(X, y, encoder=self.model, size=size, return_encoded=True, rand_seed=rand_seed)
+        DS = SiameseDataSet(X, y, encoder=self.model, size=size, return_encoded=False, rand_seed=rand_seed)
         DL = DataLoader(DS, batch_size=self.batch_size, shuffle=True, num_workers=0, drop_last=False)
         return DS, DL
 
@@ -321,6 +320,7 @@ class SiameseModel:
         :return: object is modified with TrainData and ValData set
         """
         np.random.seed(self.rand_seed)
+        torch.manual_seed(self.rand_seed)
         X_train, X_val, y_train, y_val = train_test_split(X.numpy(), y.numpy(), stratify=y.numpy())
         X_train = torch.from_numpy(X_train)
         y_train = torch.from_numpy(y_train)
@@ -352,37 +352,39 @@ class SiameseModel:
         else:
             raise ValueError('mode must be either\'Train\' or \'Val\'')
 
-        # first forward pass
-        DS.run_forward()
-
         loss_fun = torch.nn.BCELoss(reduction = 'sum')
         total_loss = 0
 
         total_samples = len(DS)
         m = 0
         for batch_i in DL:
-            self.optimizer.zero_grad()
-            X1 = torch.flatten(batch_i['X1'], start_dim = 1)
-            X2 = torch.flatten(batch_i['X2'], start_dim = 1)
+            X1 = torch.flatten(batch_i['X1'], start_dim = 1).detach()
+            X2 = torch.flatten(batch_i['X2'], start_dim = 1).detach()
+            X1_encoded = self.model.forward(X1)
+            X2_encoded = self.model.forward(X2)
             c = batch_i['c']
             # note that logistic regression step implemented as a softmax on a linear layer outputting 2 features.
             # logistic function equivalent to softmax on 2 classes
-            X_cat = torch.cat([X1, X2], dim=1)
+            X_cat = torch.cat([X1_encoded, X2_encoded], dim=1)
             logistic_output = self.logistic(X_cat)
             loss = loss_fun(logistic_output[:, 1], c)
-            total_loss += loss
+            total_loss += loss.item()
             loss_batch_mean = loss.divide(float(len(c)))
-            print('Batch Mean Loss: {}'.format(loss_batch_mean))
+            print('Batch Mean Loss: {}'.format(loss_batch_mean.item()))
             if mode == 'Train':
+                self.optimizer.zero_grad()
 #                 if m == 0:
 #                     do_retain_graph = True
 #                 else:
 #                     do_retain_graph = False
-#                 loss_batch_mean.backward(retain_graph=do_retain_graph)
+                loss_batch_mean.backward()
                 self.optimizer.step()
                 m = 1
+            del loss
+            del loss_batch_mean
+            
 
-        loss_total_mean = total_loss.divide(float(total_samples))
+        loss_total_mean = total_loss/(float(total_samples))
         return loss_total_mean
 
     def pairwise_dists(self, X):
@@ -525,8 +527,8 @@ class SiameseModel:
                     is_unknown[i] = 1
             # turn is_unknown into a column vector and append to y_pred
             is_unknown = is_unknown.reshape((len(is_unknown), 1))
-            print(y_pred.shape)
-            print(is_unknown.shape)
+#             print(y_pred.shape)
+#             print(is_unknown.shape)
             y_pred = np.concatenate((y_pred, is_unknown), axis = 1)
             
         if is_tensor:

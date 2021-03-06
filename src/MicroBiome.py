@@ -191,6 +191,8 @@ class Trainer:
         """
         y_pred = self.predict(X)
         y = self.transform_y(y)
+        print(y_pred.shape)
+        print(y.shape)
         score_value = score(y_pred, y)
         
 
@@ -203,7 +205,7 @@ class TrainTester:
         test_frac = fraction to be held out for testing
         """
         self.Trainer = TrainerObj
-        self.score = score
+        self.score_use = score
         self.test_frac = test_frac
         self.rand_state = rand_state
         self.y_train = None
@@ -220,6 +222,8 @@ class TrainTester:
         X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, 
                                                                             random_state = self.rand_state, 
                                                                             test_size = self.test_frac)
+        self.X_train = X_train
+        self.X_test = X_test
         self.y_train = y_train 
         self.y_test = y_test 
         self.Trainer.fit(X_train, y_train)
@@ -233,8 +237,10 @@ class TrainTester:
         y_test_pred = np.argmax(y_test_pred_proba, axis=1)
         self.y_train_pred = y_train_pred 
         self.y_test_pred = y_test_pred 
-        self.train_score = self.score(y_train_pred, y_train)
-        self.test_score = self.score(y_test_pred, y_test)
+        # note, this implementation does a forward pass twice, but keeps with putting necessary
+        # transformations on X and y
+        self.train_score = self.Trainer.score(X_train, y_train, self.score_use)
+        self.test_score = self.Trainer.score(X_test, y_test, self.score_use)
         
 
 class MultiTrainTester(VizWiz):
