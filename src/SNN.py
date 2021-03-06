@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
 import datetime
@@ -81,6 +82,7 @@ class SiameseDataSet(Dataset):
         self.encoder = encoder
         self.return_encoded = return_encoded
         np.random.seed(rand_seed)
+        torch.manual_seed(rand_seed)
         all_inds = np.random.randint(0, m, 2*size)
         # randomly chosen indexes for X1 and X2
         self.X1_inds = all_inds[0:size]
@@ -216,6 +218,8 @@ class SiameseModel:
         self.ValData = None
         self.ValDL = None
         self.ClassDB = None
+        self.KNN = None
+        self.one_hot = None
         
     def __process_Xy(self, X, y):
         
@@ -248,7 +252,7 @@ class SiameseModel:
         :param y:
         :return: SiameseModel object is fit, with database of class examples set up.
         """
-#         torch.manual_seed(self.rand_seed)
+        torch.manual_seed(self.rand_seed)
         # convert to float32 tensor
         X, y = self.__process_Xy(X, y)
         
@@ -269,7 +273,7 @@ class SiameseModel:
             self.__splitData(X, y)
         else:
             self.TrainData = self.__makeDS(X, y)
-        
+        print('Training Encoder')
 #         print(X.dtype)
 #         print(y.dtype)
         for i in range(self.num_epochs):
@@ -311,7 +315,8 @@ class SiameseModel:
         """
         self.__check_n_classes(y, self.class_min_train)
         DS = SiameseDataSet(X, y, encoder=self.model, size=size, return_encoded=False, rand_seed=rand_seed)
-        DL = DataLoader(DS, batch_size=self.batch_size, shuffle=True, num_workers=0, drop_last=False)
+        torch.manual_seed(rand_seed)
+        DL = DataLoader(DS, batch_size=self.batch_size, shuffle=False, num_workers=0, drop_last=False)
         return DS, DL
 
     def __splitData(self, X, y):
@@ -370,7 +375,7 @@ class SiameseModel:
             loss = loss_fun(logistic_output[:, 1], c)
             total_loss += loss.item()
             loss_batch_mean = loss.divide(float(len(c)))
-            print('Batch Mean Loss: {}'.format(loss_batch_mean.item()))
+#             print('Batch Mean Loss: {}'.format(loss_batch_mean.item()))
             if mode == 'Train':
                 self.optimizer.zero_grad()
 #                 if m == 0:
@@ -452,7 +457,7 @@ class SiameseModel:
 #             print(triu_class)
 #             print(triu_class.shape)
             dist_class_values = torch.flatten(dist_class[triu_class[0, :], triu_class[1, :]])
-            print(dist_class_values.shape)
+#             print(dist_class_values.shape)
             intraclass_dists = torch.cat((intraclass_dists, dist_class_values))
             
             
@@ -478,6 +483,22 @@ class SiameseModel:
 
         if self.max_dist is None:
             self.max_dist = torch.min(torch.cat((intraclass_95th, interclass_5th)))
+            
+        X_DB = self.ClassDB['X_encoded'].detach().numpy()
+        y_DB = self.ClassDB['y'].detach().numpy()
+
+        n_samples = X.shape[0]
+        n_classes = y_DB.shape[1]
+
+        KNN_clf = KNeighborsClassifier(n_neighbors=self.k, metric='minkowski', p=2)
+        a = np.arange(0, n_classes)
+        a = a.reshape((a.shape[0], 1))
+        one_hot = OneHotEncoder(sparse=False)
+        one_hot.fit(a)
+        y_DB_vect = one_hot.inverse_transform(y_DB)
+        KNN_clf.fit(X_DB, y_DB_vect)
+        self.KNN = KNN_clf  
+        self.one_hot = one_hot
 
     def predict(self, X):
         """
@@ -498,16 +519,9 @@ class SiameseModel:
 
         X = self.model.forward(X)
         X = X.detach().numpy()
-
-        X_DB = self.ClassDB['X_encoded'].detach().numpy()
-        y_DB = self.ClassDB['y'].detach().numpy()
-
-        n_samples = X.shape[0]
-        n_classes = y_DB.shape[1]
-
-        KNN_clf = KNeighborsClassifier(n_neighbors=self.k, metric='minkowski', p=2)
-        KNN_clf.fit(X_DB, y_DB)
-        y_pred = KNN_clf.predict(X)
+        y_pred = self.KNN.predict(X)
+        y_pred = y_pred.reshape((y_pred.shape[0], 1))
+        y_pred = self.one_hot.transform(y_pred)
 
         if self.predict_unknown:
 
@@ -542,6 +556,7 @@ class SiameseModel:
         Make prediction on X. Uses KNN classifier.
         TODO: potentially replace with logistic regression based comparison of vectors
         to obtain SNN based probability
+        TODO: handle probabilities of outlier classes?
         :param X:
         :return: matrix of shape (X.shape[0], n_classes)
 
@@ -559,24 +574,10 @@ class SiameseModel:
         X = self.model.forward(X)
         X = X.detach().numpy()
 
-        X_DB = self.ClassDB['X_encoded'].detach().numpy()
-        y_DB = self.ClassDB['y'].detach().numpy()
-
-        n_samples = X.shape[0]
-        n_classes = y_DB.shape[1]
-
-        KNN_clf = KNeighborsClassifier(n_neighbors=self.k, metric='minkowski', p=2)
-        KNN_clf.fit(X_DB, y_DB)
-        y_pred = KNN_clf.predict_proba(X)
+        y_pred_proba = self.KNN.predict_proba(X)    
             
         if is_tensor:
             # return tensor if tensor input. return numpy otherwise
-            y_pred = torch.from_numpy(y_pred)
+            y_pred_proba = torch.from_numpy(y_pred_proba)
 
-        return y_pred
-
-
-
-
-
-
+        return y_pred_proba

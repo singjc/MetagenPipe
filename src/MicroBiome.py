@@ -191,23 +191,27 @@ class Trainer:
         """
         y_pred = self.predict(X)
         y = self.transform_y(y)
-        print(y_pred.shape)
-        print(y.shape)
+#         print(y_pred.shape)
+#         print(y.shape)
         score_value = score(y_pred, y)
+        return score_value
         
 
 class TrainTester:
     
-    def __init__(self, TrainerObj, score, test_frac = 0.20, rand_state = 42):
+    def __init__(self, TrainerObj, score, test_frac = 0.20, rand_state = 42, use_proba_predict=True):
         """
         TrainerObj = object of Trainer class
         score = score function from sklearn.metrics, of signature score(y_true, y_predicted)
         test_frac = fraction to be held out for testing
+        rand_state = exactly what it sounds like
+        use_proba_predict = use class probability estimates to make final estimates.
         """
         self.Trainer = TrainerObj
         self.score_use = score
         self.test_frac = test_frac
         self.rand_state = rand_state
+        self.use_proba_predict = use_proba_predict
         self.y_train = None
         self.y_test = None
         self.y_train_pred_proba = None
@@ -233,8 +237,14 @@ class TrainTester:
         self.y_test_pred_proba = y_test_pred_proba
         # y_train_pred = np.where(y_train_pred_proba > 0.5, 1, 0)
         # y_test_pred = np.where(y_test_pred_proba > 0.5, 1, 0)
-        y_train_pred = np.argmax(y_train_pred_proba, axis=1)
-        y_test_pred = np.argmax(y_test_pred_proba, axis=1)
+        
+        if self.use_proba_predict:
+            y_train_pred = np.argmax(y_train_pred_proba, axis=1)
+            y_test_pred = np.argmax(y_test_pred_proba, axis=1)
+        else:
+            y_train_pred = self.Trainer.predict(X_train)
+            y_test_pred = self.Trainer.predict(X_test)
+            
         self.y_train_pred = y_train_pred 
         self.y_test_pred = y_test_pred 
         # note, this implementation does a forward pass twice, but keeps with putting necessary
