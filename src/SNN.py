@@ -12,6 +12,18 @@ import pandas as pd
 import datetime
 
 
+def seed_everything(seed: int):
+    import random, os
+    import numpy as np
+    import torch
+    
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
 
 class FeedForward(nn.Module):
     """
@@ -81,8 +93,9 @@ class SiameseDataSet(Dataset):
         self.y = y
         self.encoder = encoder
         self.return_encoded = return_encoded
-        np.random.seed(rand_seed)
-        torch.manual_seed(rand_seed)
+        seed_everything(rand_seed)
+#         np.random.seed(rand_seed)
+#         torch.manual_seed(rand_seed)
         all_inds = np.random.randint(0, m, 2*size)
         # randomly chosen indexes for X1 and X2
         self.X1_inds = all_inds[0:size]
@@ -221,6 +234,8 @@ class SiameseModel:
         self.KNN = None
         self.one_hot = None
         
+        seed_everything(rand_seed)
+        
     def __process_Xy(self, X, y):
         
         if not isinstance(X, torch.Tensor):
@@ -252,7 +267,9 @@ class SiameseModel:
         :param y:
         :return: SiameseModel object is fit, with database of class examples set up.
         """
-        torch.manual_seed(self.rand_seed)
+        
+        seed_everything(self.rand_seed)
+#         torch.manual_seed(self.rand_seed)
         # convert to float32 tensor
         X, y = self.__process_Xy(X, y)
         
@@ -315,7 +332,7 @@ class SiameseModel:
         """
         self.__check_n_classes(y, self.class_min_train)
         DS = SiameseDataSet(X, y, encoder=self.model, size=size, return_encoded=False, rand_seed=rand_seed)
-        torch.manual_seed(rand_seed)
+#         torch.manual_seed(rand_seed)
         DL = DataLoader(DS, batch_size=self.batch_size, shuffle=False, num_workers=0, drop_last=False)
         return DS, DL
 
@@ -324,8 +341,8 @@ class SiameseModel:
         Split Data into test and train fractions
         :return: object is modified with TrainData and ValData set
         """
-        np.random.seed(self.rand_seed)
-        torch.manual_seed(self.rand_seed)
+#         np.random.seed(self.rand_seed)
+#         torch.manual_seed(self.rand_seed)
         X_train, X_val, y_train, y_val = train_test_split(X.numpy(), y.numpy(), stratify=y.numpy())
         X_train = torch.from_numpy(X_train)
         y_train = torch.from_numpy(y_train)
@@ -425,7 +442,7 @@ class SiameseModel:
             class_i_inds = np.where(np.equal(y[:,i], 1))[0]
 #             print(class_i_inds[0].shape)
 #             print(class_i_inds[1].shape)
-            np.random.seed(self.rand_seed)
+#             np.random.seed(self.rand_seed)
             class_i_selected = np.random.choice(class_i_inds, size=self.n_example_predict)
             class_inds = np.concatenate((class_inds, class_i_selected))
             m_end = m + self.n_example_predict
