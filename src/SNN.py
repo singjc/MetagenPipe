@@ -166,12 +166,22 @@ class SiameseDataSet(Dataset):
 #     :return: loss function value
 #     """
 
+def weight_init(m):
+    """
+    Initialize weights for linear layer
+    """
+    if isinstance(m, nn.Linear):
+        nn.init.kaiming_uniform_(m.weight.data)
+        nn.init.constant_(m.bias.data, 0)
+    else:
+        raise TypeError('Only implemented for linear layers')
+
 
 class SiameseModel:
     """
     Siamese Neural Network, modeled off of sklearn model API
     """
-    def __init__(self, model, update_encoder=True, predict_unknown=True, learning_rate=1e-3,weight_decay=1e-5,
+    def __init__(self, model, reinit_weights=True, update_encoder=True, predict_unknown=True, learning_rate=1e-3,weight_decay=1e-5,
                  batch_size=1000, num_epochs=5, rand_seed=42, class_min_train=10,
                  n_example_predict=20, k=5, max_dist=None, train_size=20000, validation_frac=0.10):
         """
@@ -211,8 +221,11 @@ class SiameseModel:
         :param train_size: number of training triplets to make. number of validation triplets is np.floor(train_size*(validation_frac)/(1-validation_frac)
         :param validation_frac: fraction of samples to use for validation. Data is split in stratified fashion. If None, do not do validation step.
         """
-
+        
+        seed_everything(rand_seed)
+        
         self.model = model
+        self.reinit_weights = reinit_weights
         self.logistic = LinearSoftMax(inp_size=model.out_size*2, out_size=2)
         self.update_encoder = update_encoder
         self.predict_unknown = predict_unknown
@@ -233,8 +246,6 @@ class SiameseModel:
         self.ClassDB = None
         self.KNN = None
         self.one_hot = None
-        
-        seed_everything(rand_seed)
         
     def __process_Xy(self, X, y):
         
@@ -269,6 +280,10 @@ class SiameseModel:
         """
         
         seed_everything(self.rand_seed)
+        if self.reinit_weights:
+            # initializes weights after a seed given
+            self.model.apply(weight_init)
+        
 #         torch.manual_seed(self.rand_seed)
         # convert to float32 tensor
         X, y = self.__process_Xy(X, y)
