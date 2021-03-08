@@ -196,20 +196,16 @@ class SiameseModel:
     """
     Siamese Neural Network, modeled off of sklearn model API
     """
-    def __init__(self, model, reinit_weights=True, update_encoder=True, predict_unknown=True, learning_rate=1e-3,weight_decay=1e-5,
+    def __init__(self, model, reinit_weights=True, update_encoder=True, predict_unknown=True, proba_thresh=0.5, learning_rate=1e-3,weight_decay=1e-5,
                  batch_size=1000, num_epochs=5, rand_seed=42, class_min_train=10,
-                 n_example_predict=20, k=5, max_dist=None, train_size=20000, validation_frac=0.10):
+                 n_example_predict=20, train_size=20000, validation_frac=0.10):
         """
         Initialize Object
 
         Note: Training step involves training on triplets and also calculating a validation loss based on validation triplets
-                Prediction involves storing a database of class examples' encoded positions.
-                If max_dist=None, max_dist automatically set to the minimum of the following 2 values:
-                5th percentile of inter-class differences
-                95th percentile of intra-class distances
-                If median euclidean distance (in latent space) between query and members of assigned class is > max_dist,
-                assign unknown label (0, 0, ..., 0, 0) for given sample. Note that this is currently a heuristic and
-                needs to be evaluated in context of correctly predicting unseen classes.
+                Prediction involves storing a database of class examples' encoded positions, predicting the log probability
+                of a match with examples of each class, and then selecting the class with highest median log-probability across
+                stored database of examples
 
                 Use loss function as as defined by Koch, Zemel, Salakhutdinov
                 in Siamese Neural Networks for One-shot Image Recognition
@@ -218,10 +214,12 @@ class SiameseModel:
 
 
         :param model: neural net outputting latent space
+
         :param update_encoder: update encoder, i.e. run siamese NN training. If set to False, skip siamese NN training
         when self.fit(X,y) called, and instead encode data into latent space and make predictions based on encoder's
         current values. False setting useful for assessing if latent space can distinguish unseen classes.
-        :param predict_unknown: boolean. Whether or not to
+        :param predict_unknown: boolean. Whether or not to return unknown status.
+        :param proba_thresh: float. threshold probability at which to classify sample as an unknown.
         :param learning_rate: learning rate
         :param weight_decay: see docs for pytorch adam optimizer. L2 penalty on params
         :param batch_size: batch size for training + validation
@@ -229,10 +227,6 @@ class SiameseModel:
         :param rand_seed: random seed for splitting data, selecting examples for the predict function.
         :param class_min_train: minimum necessary examples necessary for training and validation sets
         :param n_example_predict: examples to select per class for the predict function
-        :param k: number of nearest neighbors in KNN to predict classes.
-        :param max_dist: maximum distance between 2 classes. If median distance to predicted class is > max_dist,
-                query fed to .predict method is given 'unclassified' status. See note above for automatic determination
-                of max_dist if max_dist set to None.
         :param train_size: number of training triplets to make. number of validation triplets is np.floor(train_size*(validation_frac)/(1-validation_frac)
         :param validation_frac: fraction of samples to use for validation. Data is split in stratified fashion. If None, do not do validation step.
         """
@@ -244,14 +238,13 @@ class SiameseModel:
         self.logistic = LinearSoftMax(inp_size=model.out_size, out_size=2)
         self.update_encoder = update_encoder
         self.predict_unknown = predict_unknown
+        self.proba_thresh = proba_thresh
         self.optimizer = torch.optim.Adam((list(self.model.parameters()) + list(self.logistic.parameters())), lr=learning_rate, weight_decay=weight_decay)
         self.batch_size = batch_size
         self.num_epochs = num_epochs
         self.rand_seed = rand_seed
         self.class_min_train = class_min_train
         self.n_example_predict = n_example_predict
-        self.k = k
-        self.max_dist = max_dist
         self.train_size = train_size
         self.validation_frac = validation_frac
         self.TrainData = None
@@ -259,7 +252,6 @@ class SiameseModel:
         self.ValData = None
         self.ValDL = None
         self.ClassDB = None
-        self.KNN = None
         self.one_hot = None
         self.TrainStats = None
         
@@ -308,7 +300,28 @@ class SiameseModel:
             self.__trainEncoder(X, y)
 
         self.__makeDataBase(X, y)
+        self.RefitOneHot()
 
+    def RefitOneHot(self):
+        """
+        Refit One Hot Encoder
+        :return: modify one-hot encoder
+        """
+        try:
+            y_db = self.ClassDB['y']
+            n_classes = y_db.shape[1]
+        except:
+            raise ValueError('Likely that self.ClassDB not set. Did you run self.fit method?')
+        finally:
+            pass
+
+        if self.predict_unknown:
+            n_classes += 1
+
+        a = np.arange(0, n_classes)
+        a = a.reshape((a.shape[0], 1))
+        self.one_hot = OneHotEncoder(sparse=False)
+        self.one_hot.fit(a)
 
     def __trainEncoder(self, X, y):
         """
@@ -455,27 +468,26 @@ class SiameseModel:
                 m = 1
             del loss
             del loss_batch_mean
-            
 
         loss_total_mean = total_loss/(float(total_samples))
         return loss_total_mean
 
-    def pairwise_dists(self, X):
-        """
-        Compute euclidean distances between all vectors in X
-        :param X:
-        :return:
-        """
-        return_torch = False
-        if isinstance(X, torch.Tensor):
-            return_torch = True
-            X = X.detach().numpy()
-
-        dist_mat = pairwise_distances(X, metric = 'euclidean')
-        if return_torch:
-            dist_mat = torch.tensor(dist_mat)
-
-        return dist_mat
+    # def pairwise_dists(self, X):
+    #     """
+    #     Compute euclidean distances between all vectors in X
+    #     :param X:
+    #     :return:
+    #     """
+    #     return_torch = False
+    #     if isinstance(X, torch.Tensor):
+    #         return_torch = True
+    #         X = X.detach().numpy()
+    #
+    #     dist_mat = pairwise_distances(X, metric = 'euclidean')
+    #     if return_torch:
+    #         dist_mat = torch.tensor(dist_mat)
+    #
+    #     return dist_mat
 
     def __makeDataBase(self, X, y):
         """
@@ -509,65 +521,6 @@ class SiameseModel:
         self.ClassDB['X_encoded'] = X_out_subs
         self.ClassDB['y'] = y_subs
 
-        dist = self.pairwise_dists(X_out_subs)
-#         print(dist)
-        # find 95th percentile of intraclass distances
-        intraclass_dists = torch.tensor([])
-#         print(dist.shape)
-        for idx_class in class_inds_list:
-#             print(idx_class.shape)
-#             print(idx_class)
-            dist_class = dist[:, idx_class]
-            dist_class = dist_class[idx_class, :]
-#             print(dist_class)
-#             print(dist_class.shape)
-            triu_class = torch.triu_indices(dist_class.shape[0], dist_class.shape[1], offset=1)
-#             print(triu_class)
-#             print(triu_class.shape)
-            dist_class_values = torch.flatten(dist_class[triu_class[0, :], triu_class[1, :]])
-#             print(dist_class_values.shape)
-            intraclass_dists = torch.cat((intraclass_dists, dist_class_values))
-            
-            
-#         print(intraclass_dists)
-#         print(intraclass_dists.detach().numpy())
-        intraclass_95th = torch.tensor([np.percentile(intraclass_dists.detach().numpy(), 95)]).to(torch.float32)
-        self.ClassDB['intraclass_dists'] = intraclass_dists
-
-        # find 5th percentile of interclass dists
-        interclass_dists = torch.tensor([])
-
-        for i in range(len(class_inds_list) - 1):
-            idx_i = class_inds_list[i]
-            for j in range(i + 1, len(class_inds_list)):
-                idx_j = class_inds_list[j]
-                dists_i_j = dist[idx_i, :]
-                dists_i_j = dist[:, idx_j]
-                dists_i_j = torch.flatten(dists_i_j)
-                interclass_dists = torch.cat((interclass_dists, dists_i_j))
-
-        self.ClassDB['interclass_dists'] = interclass_dists
-        interclass_5th = torch.tensor([np.percentile(intraclass_dists.detach().numpy(), 5)]).to(torch.float32)
-
-        if self.max_dist is None:
-            self.max_dist = torch.min(torch.cat((intraclass_95th, interclass_5th)))
-            
-        X_DB = self.ClassDB['X_encoded'].detach().numpy()
-        y_DB = self.ClassDB['y'].detach().numpy()
-
-        n_samples = X.shape[0]
-        n_classes = y_DB.shape[1]
-
-        KNN_clf = KNeighborsClassifier(n_neighbors=self.k, metric='minkowski', p=2)
-        a = np.arange(0, n_classes)
-        a = a.reshape((a.shape[0], 1))
-        one_hot = OneHotEncoder(sparse=False)
-        one_hot.fit(a)
-        y_DB_vect = one_hot.inverse_transform(y_DB)
-        KNN_clf.fit(X_DB, y_DB_vect)
-        self.KNN = KNN_clf  
-        self.one_hot = one_hot
-
     def predict(self, X):
         """
         Make prediction on X. NOTE:
@@ -575,43 +528,48 @@ class SiameseModel:
         :return: matrix of shape (X.shape[0], n_classes) or (X.shape[0], n_classes + 1) if predict_unknown set to True
 
         """
-        is_numpy = False
         is_tensor = False
         if isinstance(X, np.ndarray):
-            is_numpy = True
             X = torch.from_numpy(X).to(torch.float32)
         elif isinstance(X, torch.Tensor):
             is_tensor = True
         else:
             raise TypeError('Expect 2D np.ndarray or tensor')
 
-        X = self.model.forward(X)
-        X = X.detach().numpy()
-        y_pred = self.KNN.predict(X)
-        y_pred = y_pred.reshape((y_pred.shape[0], 1))
-        y_pred = self.one_hot.transform(y_pred)
+        y_proba = self.predict_proba(X)
+        y_pred = torch.zeros(y_proba.shape)
+
+        for i in range(n_samples):
+            y_proba_i = y_proba[i, :]
+            # note that ties here are handled by selecting the first class. In practice this should be
+            # unlikely to be problematic due to use of floating point numbers in predicting probability
+            # if we are predicting unknown labels, we handle cases where 1 or more other classes
+            # have equal probability by assigning them an unknown label.
+            class_i = torch.argmax(y_proba_i)
+            y_pred[i, class_i] = 1
+
+        n_samples = y_proba.shape[0]
+        n_classes = y_pred.shape[1]
 
         if self.predict_unknown:
 
             print('Classifying outlier samples as unknown. output will have 1 additional class column')
 
-            is_unknown = np.repeat(0, n_samples)
+            is_unknown = torch.zeros((n_samples, 1))
 
             for i in range(n_samples):
-                class_i = np.where(np.equal(y_pred[i, :], 1))[0]
-                class_inds = np.where(np.equal(y_DB[:, class_i], 1))[0]
-                diff = X[i,:] - X_DB[class_inds, :]
-                class_dists = np.sqrt(np.diag(np.matmul(diff, diff.T)))
-                median_dist = np.median(class_dists)
+                class_i = torch.where(torch.equal(y_pred[i, :], 1))
+                class_prob_i = y_proba[i, class_i]
+                num_equal = torch.sum(torch.eq(y_proba, class_prob_i))
+                # True if more than one class with probability equal to max class probability
+                multi_label = num_equal > 1
+                # True if class probability is below probability threshold
+                below_thresh = class_prob_i < self.proba_thresh
+                if multi_label or below_thresh:
+                    y_pred[i, :] = 0
+                    is_unknown[i, 0] = 1
 
-                if median_dist > self.max_dist:
-                    y_pred[i, class_i] = 0
-                    is_unknown[i] = 1
-            # turn is_unknown into a column vector and append to y_pred
-            is_unknown = is_unknown.reshape((len(is_unknown), 1))
-#             print(y_pred.shape)
-#             print(is_unknown.shape)
-            y_pred = np.concatenate((y_pred, is_unknown), axis = 1)
+            y_pred = torch.cat((y_pred, is_unknown), axis=1)
             
         if is_tensor:
             # return tensor if tensor input. return numpy otherwise
@@ -622,9 +580,7 @@ class SiameseModel:
     def predict_proba(self, X):
         """
         Make prediction on X. Uses KNN classifier.
-        TODO: potentially replace with logistic regression based comparison of vectors
         to obtain SNN based probability
-        TODO: handle probabilities of outlier classes?
         :param X:
         :return: matrix of shape (X.shape[0], n_classes)
 
@@ -635,17 +591,34 @@ class SiameseModel:
             is_numpy = True
             X = torch.from_numpy(X).to(torch.float32)
         elif isinstance(X, torch.Tensor):
-            is_tensor = True
+            pass
         else:
             raise TypeError('Expect 2D np.ndarray or tensor')
 
         X = self.model.forward(X)
-        X = X.detach().numpy()
+        X_db = self.ClassDB['X_encoded']
+        y_db = self.ClassDB['y']
+        n_classes = y_db.shape[1]
+        n_samples = X.shape[0]
+        y_pred_proba = torch.zeros((n_samples, n_classes))
 
-        y_pred_proba = self.KNN.predict_proba(X)    
+        for i in range(n_samples):
+            # calculate summed log probabilities for each class, comparing to each sample
+            # log probability calculated with logistic function
+            X_diff_i = torch.reshape(X[i, :], (1, X.shape[1])) - X_db
+            logistic_input = torch.abs(X_diff_i)
+            logistic_output = self.logistic.forward(logistic_input)
+            class_probs = torch.zeros(n_classes)
+
+            for j in range(n_classes):
+                class_j_idx = torch.where(torch.equal(y_db[:, j], 1))
+                class_j_probs = logistic_output[class_j_idx]
+                class_probs[j] = torch.median(class_j_probs)
+
+            y_pred_proba[i, :] = class_probs
             
-        if is_tensor:
+        if is_numpy:
             # return tensor if tensor input. return numpy otherwise
-            y_pred_proba = torch.from_numpy(y_pred_proba)
+            y_pred_proba = y_pred_proba.detach().numpy()
 
         return y_pred_proba
