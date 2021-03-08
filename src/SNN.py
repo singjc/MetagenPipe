@@ -29,7 +29,7 @@ class FeedForward(nn.Module):
     """
     Feed Forward neural network,
     """
-    def __init__(self, inp_size, hidden_layer_sizes):
+    def __init__(self, inp_size, hidden_layer_sizes, activation='relu'):
         """
 
         :param inp_size: input size
@@ -45,6 +45,17 @@ class FeedForward(nn.Module):
             fc_s = nn.Linear(in_features=fc_in_size, out_features=s).to(torch.float32)
             self.layers.append(fc_s)
             fc_in_size = s
+            
+        if activation == 'relu':
+            self.activation = F.relu
+        elif activation == 'tanh':
+            self.activation = F.tanh
+        elif activation == 'sigmoid':
+            self.activation = F.sigmoid
+        elif activation == 'softplus':
+            self.activation = F.softplus
+        else:
+            raise ValueError('Not implemented for activation {}'.format(activation))
 
     def forward(self, X):
         """
@@ -53,7 +64,7 @@ class FeedForward(nn.Module):
         :return: mxp matrix, where p is the output size of the last hidden layer
         """
         for fc in self.layers:
-            X = F.relu(fc(X))
+            X = self.activation(fc(X))
 
         return X
 
@@ -173,8 +184,12 @@ def weight_init(m):
     if isinstance(m, nn.Linear):
         nn.init.kaiming_uniform_(m.weight.data)
         nn.init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.ModuleList):
+        pass
+    elif isinstance(m, FeedForward):
+        pass
     else:
-        raise TypeError('Only implemented for linear layers')
+        raise TypeError('Only implemented for linear layers or lists thereof. Type: {}'.format(type(m)))
 
 
 class SiameseModel:
@@ -226,7 +241,7 @@ class SiameseModel:
         
         self.model = model
         self.reinit_weights = reinit_weights
-        self.logistic = LinearSoftMax(inp_size=model.out_size*2, out_size=2)
+        self.logistic = LinearSoftMax(inp_size=model.out_size, out_size=2)
         self.update_encoder = update_encoder
         self.predict_unknown = predict_unknown
         self.optimizer = torch.optim.Adam((list(self.model.parameters()) + list(self.logistic.parameters())), lr=learning_rate, weight_decay=weight_decay)
@@ -246,6 +261,7 @@ class SiameseModel:
         self.ClassDB = None
         self.KNN = None
         self.one_hot = None
+        self.TrainStats = None
         
     def __process_Xy(self, X, y):
         
@@ -300,7 +316,10 @@ class SiameseModel:
         :param y: mxc one-hot encoded class matrix
         :return: object with encoder in model attribute updated
         """
-
+        epoch = []
+        mean_loss_train_values = []
+        mean_loss_val_values = []
+        
         if not self.validation_frac is None:
             self.__splitData(X, y)
         else:
@@ -311,22 +330,39 @@ class SiameseModel:
         for i in range(self.num_epochs):
             print('#########################################')
             print('Epoch {0} of {1}'.format(i + 1, self.num_epochs))
+            epoch.append(i + 1)
             print('__Training__')
             now = datetime.datetime.now()
             print(now.strftime("%Y-%m-%d %H:%M:%S"))
-            mean_loss = self.run_epoch(mode='Train')
-            print('MEAN LOSS: {}'.format(mean_loss))
+            mean_loss_train = self.run_epoch(mode='Train')
+            print('MEAN LOSS: {}'.format(mean_loss_train))
+            mean_loss_train_values.append(mean_loss_train)
             if not self.validation_frac is None:
                 print('__Validation__')
                 now = datetime.datetime.now()
                 print(now.strftime("%Y-%m-%d %H:%M:%S"))
-                mean_loss = self.run_epoch(mode='Val')
-                print('MEAN LOSS: {}'.format(mean_loss))
+                mean_loss_val = self.run_epoch(mode='Val')
+                mean_loss_val_values.append(mean_loss_val)
+                print('MEAN LOSS: {}'.format(mean_loss_val))
 
         print('#########################################')
         print('Finished')
         now = datetime.datetime.now()
         print(now.strftime("%Y-%m-%d %H:%M:%S"))
+        
+        df_dict = {}
+        df_dict['epoch'] = epoch
+        df_dict['mean_loss'] = mean_loss_train_values
+        df_dict['stage'] = np.repeat('train', len(epoch))
+        self.TrainStats = pd.DataFrame(df_dict)
+        
+        if len(mean_loss_val_values) == len(epoch):
+            df_dict_add = {}
+            df_dict_add['epoch'] = epoch
+            df_dict_add['mean_loss'] = mean_loss_val_values
+            df_dict_add['stage'] = np.repeat('val', len(epoch))
+            df_add = pd.DataFrame(df_dict_add)
+            self.TrainStats = self.TrainStats.append(df_add)  
 
     def __check_n_classes(self, y, thresh):
         # y is expected to be a tensor
@@ -402,8 +438,8 @@ class SiameseModel:
             c = batch_i['c']
             # note that logistic regression step implemented as a softmax on a linear layer outputting 2 features.
             # logistic function equivalent to softmax on 2 classes
-            X_cat = torch.cat([X1_encoded, X2_encoded], dim=1)
-            logistic_output = self.logistic(X_cat)
+            X_abs_diff = torch.abs(X1_encoded - X2_encoded)
+            logistic_output = self.logistic(X_abs_diff)
             loss = loss_fun(logistic_output[:, 1], c)
             total_loss += loss.item()
             loss_batch_mean = loss.divide(float(len(c)))
