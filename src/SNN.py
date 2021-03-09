@@ -538,7 +538,8 @@ class SiameseModel:
 
         y_proba = self.predict_proba(X)
         y_pred = torch.zeros(y_proba.shape)
-
+        n_samples = X.shape[0]
+        
         for i in range(n_samples):
             y_proba_i = y_proba[i, :]
             # note that ties here are handled by selecting the first class. In practice this should be
@@ -558,7 +559,7 @@ class SiameseModel:
             is_unknown = torch.zeros((n_samples, 1))
 
             for i in range(n_samples):
-                class_i = torch.where(torch.equal(y_pred[i, :], 1))
+                class_i = torch.where(torch.eq(y_pred[i, :], 1))
                 class_prob_i = y_proba[i, class_i]
                 num_equal = torch.sum(torch.eq(y_proba, class_prob_i))
                 # True if more than one class with probability equal to max class probability
@@ -611,8 +612,12 @@ class SiameseModel:
             class_probs = torch.zeros(n_classes)
 
             for j in range(n_classes):
-                class_j_idx = torch.where(torch.equal(y_db[:, j], 1))
-                class_j_probs = logistic_output[class_j_idx]
+                # y_db[:, j] is 1D so this is safe to do
+                class_j_idx = torch.where(torch.eq(y_db[:, j], 1))[0]
+                # VERY IMPORTANT: logistic output column 2 (index 1)
+                # is what's used in the loss function for the binary cross entropy.
+                # it's the predicted likelihood.
+                class_j_probs = logistic_output[class_j_idx, 1]
                 class_probs[j] = torch.median(class_j_probs)
 
             y_pred_proba[i, :] = class_probs
