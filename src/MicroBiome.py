@@ -177,10 +177,12 @@ class Trainer:
         return(y_pred)
 
     def predict_proba(self, X):
-
-        X = self.transform_X(X)
-        y_pred_proba = self.model.predict_proba(X)
-        return(y_pred_proba)
+        if hasattr(self.model, 'predict_proba'):
+            X = self.transform_X(X)
+            y_pred_proba = self.model.predict_proba(X)
+            return(y_pred_proba)
+        else:
+            return None
 
         
     def score(self, X, y, score):
@@ -223,14 +225,22 @@ class TrainTester:
         self.y_train = y_train 
         self.y_test = y_test 
         self.Trainer.fit(X_train, y_train)
-        y_train_pred_proba = self.Trainer.predict_proba(X_train)
-        y_test_pred_proba = self.Trainer.predict_proba(X_test)
-        self.y_train_pred_proba = y_train_pred_proba
-        self.y_test_pred_proba = y_test_pred_proba
-        # y_train_pred = np.where(y_train_pred_proba > 0.5, 1, 0)
-        # y_test_pred = np.where(y_test_pred_proba > 0.5, 1, 0)
-        y_train_pred = np.argmax(y_train_pred_proba, axis=1)
-        y_test_pred = np.argmax(y_test_pred_proba, axis=1)
+        if hasattr(self.Trainer, 'predict_proba'):
+            y_train_pred_proba = self.Trainer.predict_proba(X_train)
+            y_test_pred_proba = self.Trainer.predict_proba(X_test)
+            self.y_train_pred_proba = y_train_pred_proba
+            self.y_test_pred_proba = y_test_pred_proba
+            # y_train_pred = np.where(y_train_pred_proba > 0.5, 1, 0)
+            # y_test_pred = np.where(y_test_pred_proba > 0.5, 1, 0)
+            if self.y_train_pred_proba is not None:
+                y_train_pred = np.argmax(y_train_pred_proba, axis=1)
+                y_test_pred = np.argmax(y_test_pred_proba, axis=1)
+            else: 
+                y_train_pred = self.Trainer.predict(X_train)
+                y_test_pred = self.Trainer.predict(X_test)
+        else:
+            y_train_pred = self.Trainer.predict(X_train)
+            y_test_pred = self.Trainer.predict(X_test)
         self.y_train_pred = y_train_pred 
         self.y_test_pred = y_test_pred 
         self.train_score = self.score(y_train_pred, y_train)
