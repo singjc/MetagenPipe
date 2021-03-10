@@ -485,7 +485,7 @@ class SiameseModel:
         self.__check_n_classes(y, self.class_min_train)
         DS = SiameseDataSet(X, y, encoder=self.model, size=size, return_encoded=False, rand_seed=rand_seed)
 #         torch.manual_seed(rand_seed)
-        DL = DataLoader(DS, batch_size=self.batch_size, shuffle=False, num_workers=0, drop_last=False)
+        DL = DataLoader(DS, batch_size=self.batch_size, shuffle=True, num_workers=0, drop_last=False)
         return DS, DL
 
     def __splitData(self, X, y):
