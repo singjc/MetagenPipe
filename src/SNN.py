@@ -10,6 +10,7 @@ from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
 import datetime
+import warnings
 
 
 def seed_everything(seed: int):
@@ -92,37 +93,124 @@ class SiameseDataSet(Dataset):
         :param X: mxn matrix of vectors. a 2D tensor
         :param y: one-hot encoded matrix of classes. 2D tensor
         :param encoder: Encoder function. should be of class nn.Module
-        :param size: size of random sample to take. Sampling done with replacement
+        :param size: dataset size
         :param return_encoded: If True, return encoded data, if false, return non-encoded data
         """
 
+        if not isinstance(X, torch.Tensor):
+            raise TypeError('X must be a tensor')
+        if not isinstance(y, torch.Tensor):
+            raise TypeError('y must be a tensor')
+
         if not X.shape[0] == y.shape[0]:
             raise ValueError('number of samples in X ' + X.shape[0] + ' does not match number of samples in y ' + y.shape[0])
-        m = X.shape[0]
+        if not len(X.shape) == 2:
+            raise ValueError('Expect X to be a 2D tensor')
+        if not len(y.shape) == 2:
+            raise ValueError('Expect y to be a 2D tensor')
+
         self.size = size
         self.X = X
         self.y = y
+        self.X_use = None
+        self.y_use = None
         self.encoder = encoder
         self.return_encoded = return_encoded
         seed_everything(rand_seed)
-#         np.random.seed(rand_seed)
-#         torch.manual_seed(rand_seed)
-        all_inds = np.random.randint(0, m, 2*size)
-        # randomly chosen indexes for X1 and X2
-        self.X1_inds = all_inds[0:size]
-        self.X2_inds = all_inds[size:len(all_inds)]
-        # samples of X given randomly chosen indices
-        self.X1 = self.X[self.X1_inds, :].clone().detach()
-        self.X2 = self.X[self.X2_inds, :].clone().detach()
+
+        # get class counts in y, make stacked matrices with balanced classes.
+        # note that
+        n_classes = y.shape[1]
+        n_per_class = np.floor(size/(n_classes*2))
+        class_counts = torch.sum(y, dim=0)
+        X_stacked = None
+        y_stacked = None
+
+        # indices for X1 and X2
+        X1_idx = np.array([])
+        X2_idx = np.array([])
+        class_idx_stacked_list = []
+
+        m = 0
+
+        # create stacked matrix of equal class composition
+        for i in range(n_classes):
+            # index class
+            class_i_idx = torch.where(torch.eq(y_stacked[:, i], 1))
+            # randomly index rows for given class, with replacement
+            rand_inds = np.random.randint(0, class_counts[i].detach().numpy(), n_per_class)
+            X_i = X[class_i_idx, :][rand_inds, :].clone.detach()
+            # technically we could get away with just remaking the matrix y here, but not really
+            # keen on respecifying matrix
+            y_i = y[class_i_idx, :][rand_inds, :].clone.detach()
+            if i == 0:
+                X_stacked = X_i
+                y_stacked = y_i
+            else:
+                X_stacked = torch.cat((X_stacked, X_i), dim=0)
+                y_stacked = torch.cat((y_stacked, y_i), dim=0)
+
+            # index for class samples in given index
+            class_idx_stacked = np.arange(m, X_stacked.shape[0])
+            class_idx_stacked_list.append(class_idx_stacked)
+            X1_idx = np.concatenate((X1_idx, class_idx_stacked))
+            class_idx_stacked_perm = np.random.choice(class_idx_stacked, size=len(class_idx_stacked), replace=False)
+            X2_idx = np.concatenate((X2_idx, class_idx_stacked_perm))
+
+            m = X_stacked.shape[0]
+
+        # get indices necessary for out of class comparisons
+        for i in range(n_classes):
+            # pair each class's samples with randomly selected out of class samples
+            in_class_idx = class_idx_stacked_list[i]
+            out_class_idx = np.array([])
+
+            for j in range(n_classes):
+                if i == j:
+                    next()
+                else:
+                    out_class_idx = np.concatenate(out_class_idx, class_idx_stacked[j])
+
+            X1_idx = np.concatenate((X1_idx, in_class_idx))
+            out_class_idx_rnd = np.random.choice(out_class_idx, size=in_class_idx.shape[0], replace=False)
+            X2_idx = np.concatenate(X2_idx, out_class_idx_rnd)
+
+        self.X_use = X_stacked
+        self.y_use = y_stacked
+
+        if X1_idx.shape[0] < size:
+            size_diff = size - self.X1.shape[0]
+            X1_idx_append = np.random.choice(X1_idx, size=size_diff, replace=False)
+            X2_idx_append = np.random.choice(X2_idx, size=size_diff, replace=False)
+            warnings.warn('Appending {} extra pairs to self.X1 and self.X2'.format(size_diff))
+            X1_idx = np.concatenate((X1_idx, X1_idx_append))
+            X2_idx = np.concatenate((X2_idx, X2_idx_append))
+        elif X1_idx.shape[0] > size:
+            raise ValueError('self.X1 should not have number of rows greater than size')
+
+        # # samples of X given randomly chosen indices
+        self.X1 = self.X_use[X1_idx, :].clone().detach()
+        self.X2 = self.X_use[X2_idx, :].clone().detach()
+
         # vector c returns whether or not 2 class vectors corresponding to X1 and X2 are of the same class
         c = []
-        self.c = torch.tensor([np.all(np.equal(self.y[self.X1_inds[i], :].numpy(), self.y[self.X2_inds[i], :].numpy())) for i in range(size)]).to(torch.float32)
+        for i in range(len(self.y_use)):
+            c.append(np.all(np.equal(self.y_use[X1_idx[i], :].numpy(), self.y_use[self.X2_idx[i], :].numpy())))
+
+        self.c = torch.tensor(c).to(torch.float32)
         self.X1_out = None
         self.X2_out = None
-#         print(self.X.dtype)
-#         print(self.X1.dtype)
-#         print(self.X2.dtype)
-#         print(self.c.dtype)
+
+        try:
+            assert self.X1.shape[1] == self.X2.shape[1]
+            assert self.X1.shape[0] == size
+            assert self.X1.shape[0] == self.X2.shape[0]
+            assert self.X1.shape[0] == self.c.shape[0]
+        except:
+            print('self.X1 shape {} {}'.format(self.X1.shape[0], self.X1.shape[1]))
+            print('self.X2 shape {} {}'.format(self.X2.shape[0], self.X2.shape[1]))
+            print('self.c shape {} {}'.format(self.c.shape[0], self.c.shape[1]))
+            raise ValueError('Incorrect sizing for self.X1, self.X2, or self.c')
 
     def run_forward(self):
         """
