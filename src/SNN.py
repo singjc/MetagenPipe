@@ -121,14 +121,14 @@ class SiameseDataSet(Dataset):
         # get class counts in y, make stacked matrices with balanced classes.
         # note that
         n_classes = y.shape[1]
-        n_per_class = np.floor(size/(n_classes*2))
+        n_per_class = int(np.floor(size/(n_classes*2)))
         class_counts = torch.sum(y, dim=0)
         X_stacked = None
         y_stacked = None
 
         # indices for X1 and X2
-        X1_idx = np.array([])
-        X2_idx = np.array([])
+        X1_idx = np.array([]).astype('int64')
+        X2_idx = np.array([]).astype('int64')
         class_idx_stacked_list = []
 
         m = 0
@@ -136,13 +136,13 @@ class SiameseDataSet(Dataset):
         # create stacked matrix of equal class composition
         for i in range(n_classes):
             # index class
-            class_i_idx = torch.where(torch.eq(y_stacked[:, i], 1))
+            class_i_idx = torch.where(torch.eq(y[:, i], 1))[0]
             # randomly index rows for given class, with replacement
             rand_inds = np.random.randint(0, class_counts[i].detach().numpy(), n_per_class)
-            X_i = X[class_i_idx, :][rand_inds, :].clone.detach()
+            X_i = X[class_i_idx, :][rand_inds, :].clone().detach()
             # technically we could get away with just remaking the matrix y here, but not really
             # keen on respecifying matrix
-            y_i = y[class_i_idx, :][rand_inds, :].clone.detach()
+            y_i = y[class_i_idx, :][rand_inds, :].clone().detach()
             if i == 0:
                 X_stacked = X_i
                 y_stacked = y_i
@@ -163,23 +163,23 @@ class SiameseDataSet(Dataset):
         for i in range(n_classes):
             # pair each class's samples with randomly selected out of class samples
             in_class_idx = class_idx_stacked_list[i]
-            out_class_idx = np.array([])
+            out_class_idx = np.array([]).astype('int64')
 
             for j in range(n_classes):
                 if i == j:
-                    next()
+                    next
                 else:
-                    out_class_idx = np.concatenate(out_class_idx, class_idx_stacked[j])
+                    out_class_idx = np.concatenate((out_class_idx, class_idx_stacked_list[j]))
 
             X1_idx = np.concatenate((X1_idx, in_class_idx))
             out_class_idx_rnd = np.random.choice(out_class_idx, size=in_class_idx.shape[0], replace=False)
-            X2_idx = np.concatenate(X2_idx, out_class_idx_rnd)
+            X2_idx = np.concatenate((X2_idx, out_class_idx_rnd))
 
         self.X_use = X_stacked
         self.y_use = y_stacked
 
         if X1_idx.shape[0] < size:
-            size_diff = size - self.X1.shape[0]
+            size_diff = size - X1_idx.shape[0]
             X1_idx_append = np.random.choice(X1_idx, size=size_diff, replace=False)
             X2_idx_append = np.random.choice(X2_idx, size=size_diff, replace=False)
             warnings.warn('Appending {} extra pairs to self.X1 and self.X2'.format(size_diff))
@@ -194,10 +194,15 @@ class SiameseDataSet(Dataset):
 
         # vector c returns whether or not 2 class vectors corresponding to X1 and X2 are of the same class
         c = []
-        for i in range(len(self.y_use)):
-            c.append(np.all(np.equal(self.y_use[X1_idx[i], :].numpy(), self.y_use[self.X2_idx[i], :].numpy())))
-
+        
+        for i in range(self.X1.shape[0]):
+            X1_y = self.y_use[X1_idx[i], :].numpy()
+            X2_y = self.y_use[X2_idx[i], :].numpy()
+            c.append(np.all(np.equal(X1_y, X2_y)))
+        
         self.c = torch.tensor(c).to(torch.float32)
+        self.X1_idx = X1_idx
+        self.X2_idx = X2_idx
         self.X1_out = None
         self.X2_out = None
 
@@ -470,7 +475,7 @@ class SiameseModel:
         n_per_class = torch.sum(y, axis=0)
         lt_thresh = torch.less(n_per_class, thresh)
         if torch.any(lt_thresh):
-            lt_inds = torch.where(lt_thresh)
+            lt_inds = torch.where(lt_thresh)[0]
             msg = 'following classes have less than required number of examples per class:'
             for ind in lt_inds:
                 msg = msg + ' ' + str(ind)
@@ -647,7 +652,7 @@ class SiameseModel:
             is_unknown = torch.zeros((n_samples, 1))
 
             for i in range(n_samples):
-                class_i = torch.where(torch.eq(y_pred[i, :], 1))
+                class_i = torch.where(torch.eq(y_pred[i, :], 1))[0]
                 class_prob_i = y_proba[i, class_i]
                 num_equal = torch.sum(torch.eq(y_proba, class_prob_i))
                 # True if more than one class with probability equal to max class probability
