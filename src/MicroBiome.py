@@ -177,10 +177,12 @@ class Trainer:
         return(y_pred)
 
     def predict_proba(self, X):
-
-        X = self.transform_X(X)
-        y_pred_proba = self.model.predict_proba(X)
-        return(y_pred_proba)
+        if hasattr(self.model, 'predict_proba'):
+            X = self.transform_X(X)
+            y_pred_proba = self.model.predict_proba(X)
+            return(y_pred_proba)
+        else:
+            return None
 
         
     def score(self, X, y, score):
@@ -231,6 +233,7 @@ class TrainTester:
         self.y_train = y_train 
         self.y_test = y_test 
         self.Trainer.fit(X_train, y_train)
+        # TODO Resolve merge conflict with master for predict_proba when merging back to master branch
         y_train_pred_proba = self.Trainer.predict_proba(X_train)
         y_test_pred_proba = self.Trainer.predict_proba(X_test)
         self.y_train_pred_proba = y_train_pred_proba
@@ -245,6 +248,7 @@ class TrainTester:
             y_train_pred = self.Trainer.predict(X_train)
             y_test_pred = self.Trainer.predict(X_test)
             
+
         self.y_train_pred = y_train_pred 
         self.y_test_pred = y_test_pred 
         # note, this implementation does a forward pass twice, but keeps with putting necessary
