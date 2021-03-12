@@ -121,7 +121,7 @@ class Trainer:
     n_components = # components for PCA
     """
     
-    def __init__(self, model, scale_X = True, scale_y = False, use_pca = False, n_components = 100):
+    def __init__(self, model, scale_X = True, scale_y = False, use_pca = False, n_components = 100, **args):
         
         self.model = model
         self.X_scaler = None
@@ -155,8 +155,9 @@ class Trainer:
             
         return y 
         
-    def fit(self, X, y):
-        
+    def fit(self, X, y, epochs=1, class_weight={}, batch_size=1, validation_data=None):
+        # print("ARGS")
+        # print(**args)
         if not self.X_scaler is None:
             self.X_scaler.fit(X)
             
@@ -168,7 +169,10 @@ class Trainer:
             
         X = self.transform_X(X)
         y = self.transform_y(y)    
-        self.model.fit(X, y)
+        if validation_data is None:
+            self.model.fit(X, y)
+        else:
+            self.model.fit(X, y, epochs=epochs, class_weight=class_weight, batch_size=batch_size, validation_data=validation_data)
         
     def predict(self, X):
         
@@ -201,7 +205,8 @@ class Trainer:
 
 class TrainTester:
     
-    def __init__(self, TrainerObj, score, test_frac = 0.20, rand_state = 42, use_proba_predict=True):
+
+    def __init__(self, TrainerObj, score, test_frac = 0.20, rand_state = 42, use_proba_predict=True, **args):
         """
         TrainerObj = object of Trainer class
         score = score function from sklearn.metrics, of signature score(y_true, y_predicted)
@@ -222,28 +227,55 @@ class TrainTester:
         self.y_test_pred = None
         self.train_score = None
         self.test_score = None
+        self.history = None
         
-    def train(self, X, y):
+    def train(self, X, y, use_indices=False, do_validation=False, **args):
         
-        X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, 
-                                                                            random_state = self.rand_state, 
-                                                                            test_size = self.test_frac)
+        if use_indices:
+            X_train_idx, X_test_idx, y_train, y_test = model_selection.train_test_split(range(0, X[0].shape[0]), y, 
+                                                                                random_state = self.rand_state, 
+                                                                                test_size = self.test_frac)
+            if do_validation:
+                X_train_idx, X_val_idx, y_train, y_val = model_selection.train_test_split(range(0, len(X_train_idx)), y_train, 
+                                                                                random_state = self.rand_state, 
+                                                                                test_size = self.test_frac)
+            X_train = [ data_i[X_train_idx] for data_i in X ]
+            X_val = [ data_i[X_val_idx] for data_i in X ]
+            X_test = [ data_i[X_test_idx] for data_i in X ]
+        else:
+            X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, 
+                                                                                random_state = self.rand_state, 
+                                                                                test_size = self.test_frac)
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train 
         self.y_test = y_test 
-        self.Trainer.fit(X_train, y_train)
-        # TODO Resolve merge conflict with master for predict_proba when merging back to master branch
-        y_train_pred_proba = self.Trainer.predict_proba(X_train)
-        y_test_pred_proba = self.Trainer.predict_proba(X_test)
-        self.y_train_pred_proba = y_train_pred_proba
-        self.y_test_pred_proba = y_test_pred_proba
-        # y_train_pred = np.where(y_train_pred_proba > 0.5, 1, 0)
-        # y_test_pred = np.where(y_test_pred_proba > 0.5, 1, 0)
+        if do_validation:
+            history = self.Trainer.fit(X_train, y_train, validation_data=[X_val,y_val], **args)
+            self.history = history
+        else:
+            self.Trainer.fit(X_train, y_train, **args)
         
-        if self.use_proba_predict:
-            y_train_pred = np.argmax(y_train_pred_proba, axis=1)
-            y_test_pred = np.argmax(y_test_pred_proba, axis=1)
+        
+        if hasattr(self.Trainer, 'predict_proba'):
+            print("Using predict_proba")
+            y_train_pred_proba = self.Trainer.predict_proba(X_train)
+            y_test_pred_proba = self.Trainer.predict_proba(X_test)
+            self.y_train_pred_proba = y_train_pred_proba
+            self.y_test_pred_proba = y_test_pred_proba
+            # y_train_pred = np.where(y_train_pred_proba > 0.5, 1, 0)
+            # y_test_pred = np.where(y_test_pred_proba > 0.5, 1, 0)
+            if self.use_proba_predict:
+                if self.y_train_pred_proba is not None:
+                    print("getting predictions from probs")
+                    y_train_pred = np.argmax(y_train_pred_proba, axis=1)
+                    y_test_pred = np.argmax(y_test_pred_proba, axis=1)
+                else: 
+                    print("getting predictions from predict")
+                    y_train_pred = self.Trainer.predict(X_train)
+                    y_test_pred = self.Trainer.predict(X_test)
+                    y_train_pred = np.where(y_train_pred > 0.5, 1, 0)
+                    y_test_pred = np.where(y_test_pred > 0.5, 1, 0)
         else:
             y_train_pred = self.Trainer.predict(X_train)
             y_test_pred = self.Trainer.predict(X_test)
@@ -251,15 +283,15 @@ class TrainTester:
 
         self.y_train_pred = y_train_pred 
         self.y_test_pred = y_test_pred 
-        # note, this implementation does a forward pass twice, but keeps with putting necessary
-        # transformations on X and y
-        self.train_score = self.Trainer.score(X_train, y_train, self.score_use)
-        self.test_score = self.Trainer.score(X_test, y_test, self.score_use)
+
+        # print(f"y_train:{y_train_pred}")
+        self.train_score = self.score(y_train_pred, y_train)
+        self.test_score = self.score(y_test_pred, y_test)
         
 
 class MultiTrainTester(VizWiz):
     
-    def __init__(self, TrainTester, n_splits = 5, numpy_rand_seed = 42):
+    def __init__(self, TrainTester, n_splits = 5, numpy_rand_seed = 42, **args):
         """
         TrainTester = TrainTester, to be deep copied for n_splits splits
         n_splits = number of splits
@@ -278,6 +310,7 @@ class MultiTrainTester(VizWiz):
         self.train_scores = []
         self.test_scores = []
         self.seeds = None
+        self.history = []
 
     def buildEncoder(self, classLabels):
         """
@@ -296,7 +329,7 @@ class MultiTrainTester(VizWiz):
             mapper[label] = i
         return encoder, mapper
     
-    def train(self, X, y):
+    def train(self, X, y, **args):
         
         np.random.seed(self.rand_seed)
         seed_sequence = np.random.rand(self.n_splits)*100
@@ -307,7 +340,7 @@ class MultiTrainTester(VizWiz):
             print('Running for split ' + str(i + 1) + ' of ' + str(self.n_splits))
             TrainTesterCopy = copy.deepcopy(self.template)
             TrainTesterCopy.rand_state = seed_sequence[i]
-            TrainTesterCopy.train(X, y)
+            TrainTesterCopy.train(X, y, **args)
             self.train_scores.append(TrainTesterCopy.train_score)
             self.test_scores.append(TrainTesterCopy.test_score)
             self.TrainerList.append(TrainTesterCopy.Trainer)
@@ -317,6 +350,7 @@ class MultiTrainTester(VizWiz):
             self.y_test_pred_proba.append( TrainTesterCopy.y_test_pred_proba )
             self.y_train_pred.append( TrainTesterCopy.y_train_pred )
             self.y_test_pred.append( TrainTesterCopy.y_test_pred )
+            self.history.append( TrainTesterCopy.history )
             
             
         
