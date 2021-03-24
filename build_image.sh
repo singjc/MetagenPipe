@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build -t microbiome_ubuntu20 .
+docker build --no-cache -t microbiome_ubuntu20 .
