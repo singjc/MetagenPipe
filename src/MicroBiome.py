@@ -219,6 +219,9 @@ class TrainTester:
         self.test_frac = test_frac
         self.rand_state = rand_state
         self.use_proba_predict = use_proba_predict
+        self.train_idx = None
+        self.val_idx = None
+        self.test_idx = None
         self.y_train = None
         self.y_test = None
         self.y_train_pred_proba = None
@@ -229,27 +232,42 @@ class TrainTester:
         self.test_score = None
         self.history = None
         
-    def train(self, X, y, use_indices=False, do_validation=False, **args):
+    def train(self, X, y, do_validation=False, **args):
         
-        if use_indices:
-            X_train_idx, X_test_idx, y_train, y_test = model_selection.train_test_split(range(0, X[0].shape[0]), y, 
-                                                                                random_state = self.rand_state, 
-                                                                                test_size = self.test_frac)
+        train_idx, test_idx = model_selection.train_test_split(np.arange(0, y.shape[0]), 
+                                                                random_state = self.rand_state, 
+                                                                test_size = self.test_frac)
+        if do_validation:
+            train_idx, val_idx = model_selection.train_test_split(train_idx, 
+                                                                random_state = self.rand_state, 
+                                                                test_size = self.test_frac)
+        else:
+            val_idx = None
+            
+        if isinstance(X, list):
+            X_train = [ data_i[train_idx] for data_i in X ]
             if do_validation:
-                X_train_idx, X_val_idx, y_train, y_val = model_selection.train_test_split(range(0, len(X_train_idx)), y_train, 
-                                                                                random_state = self.rand_state, 
-                                                                                test_size = self.test_frac)
-            X_train = [ data_i[X_train_idx] for data_i in X ]
-            X_val = [ data_i[X_val_idx] for data_i in X ]
+                X_val = [ data_i[val_idx] for data_i in X ]
             X_test = [ data_i[X_test_idx] for data_i in X ]
         else:
-            X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, 
-                                                                                random_state = self.rand_state, 
-                                                                                test_size = self.test_frac)
+            X_train = X[train_idx, :]
+            if do_validation:
+                X_val = X[val_idx, :]
+            X_test = X[test_idx, :]
+        
+        y_train = y[train_idx]
+        if do_validation:
+            y_val = y[val_idx]
+        y_test = y[test_idx]
+        
+        self.train_idx = train_idx
+        self.val_idx = val_idx
+        self.test_idx = test_idx
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train 
         self.y_test = y_test 
+        
         if do_validation:
             history = self.Trainer.fit(X_train, y_train, validation_data=[X_val,y_val], **args)
             self.history = history
@@ -285,8 +303,8 @@ class TrainTester:
         self.y_test_pred = y_test_pred 
 
         # print(f"y_train:{y_train_pred}")
-        self.train_score = self.score(y_train_pred, y_train)
-        self.test_score = self.score(y_test_pred, y_test)
+        self.train_score = self.Trainer.score(X_train, y_train, self.score_use)
+        self.test_score = self.Trainer.score(X_test, y_test, self.score_use)
         
 
 class MultiTrainTester(VizWiz):
@@ -301,6 +319,11 @@ class MultiTrainTester(VizWiz):
         self.n_splits = n_splits
         self.rand_seed = numpy_rand_seed
         self.TrainerList = []
+        self.train_idx = []
+        self.val_idx = []
+        self.test_idx = []
+        self.X_train = []
+        self.X_test = []
         self.y_train = []
         self.y_test = []
         self.y_train_pred_proba = []
@@ -344,6 +367,11 @@ class MultiTrainTester(VizWiz):
             self.train_scores.append(TrainTesterCopy.train_score)
             self.test_scores.append(TrainTesterCopy.test_score)
             self.TrainerList.append(TrainTesterCopy.Trainer)
+            self.train_idx.append( TrainTesterCopy.train_idx )
+            self.val_idx.append( TrainTesterCopy.val_idx )
+            self.test_idx.append( TrainTesterCopy.test_idx )
+            self.X_train.append( TrainTesterCopy.X_train )
+            self.X_test.append( TrainTesterCopy.X_test )
             self.y_train.append( TrainTesterCopy.y_train )
             self.y_test.append( TrainTesterCopy.y_test )
             self.y_train_pred_proba.append( TrainTesterCopy.y_train_pred_proba )
