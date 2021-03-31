@@ -1,10 +1,9 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 from sklearn import model_selection
-from sklearn.decomposition import PCA
 import copy
 from vizwiz import VizWiz
+from sklearn.pipeline import Pipeline
 
 # Define class for indexing data
 class MicroBiomeDataSet:
@@ -108,6 +107,107 @@ class MicroBiomeDataSet:
         
         return item_return
             
+class list_transformer():
+    """
+    apply pipelines to list
+    """
+    def __init__(self, transforms=[]):
+        self.transforms = transforms
+        
+    def check(self, X):
+        if not isinstance(X, list):
+            raise TypeError('X must be a list')
+        if not len(self.transforms) == len(X):
+            raise ValueError('X must have same number of elements as transforms')
+            
+    def fit(self, X):
+        
+        for i in range(len(self.transforms)):
+            self.transforms[i].fit(X[i])
+            
+    def transform(self, X):
+        """
+        Applies transformations to all elements in X
+        Assumes that all transforms output matrices
+        """
+        
+        X_cat = None
+        
+        for i in range(len(self.transforms)):
+            if i == 0:
+                X_cat = self.transforms[i].transform(X[i])
+            else:
+                X_cat = np.concatenate((X_cat, X[i]), axis=1)
+                
+        return X_cat
+            
+        
+# class transformer_X():
+#     """
+#     Transform a list of microbiome and clinical data
+#     """
+#     def __init__(self, use_PCA=True, n_components=30):
+#         self.microbiome_scaler = StandardScaler()
+#         self.microbiome_PCA = PCA(n_components=n_components)
+#         self.PCA_scaler = StandardScaler()
+#         self.clinical_scaler = StandardScaler()
+#         self.use_PCA = use_PCA
+        
+#     def fit(self, DataList):
+#         """
+#         params:
+#             DataList = list of 3 arrays, 1 (index 0) expected to be microbiome data, 2 (index 1) expected to be continuous
+#             clinical data, 3 (index 2) expected to be binary clinical data. 
+#         Note:
+#             You should sort all clinical data by binary status if you would like the order of varianbles preserved for clinical
+#             data. If PCA is run, first n_components variables are standard normalized PCA values, all variables after that are
+#             from elements 2 and 3 of DataList.
+#         """
+#         MBiomeX = DataList[0]
+#         ClinicalContinousX = DataList[1]
+#         ClinicalBinaryX = DataList[2]
+#         MBiomeX = self.microbiome_scaler.fit_transform(MBiomeX)
+        
+#         if self.use_PCA:
+#             MBiomeX = self.microbiome_PCA.fit_transform(MBiomeX)
+#             MBiomeX = self.microbiome_PCA.fit_transform(MBiomeX)
+            
+#         if not ClinicalContinousX is None:
+#             ClinicalContinousX = self.clinical_scaler.fit_transform(ClinicalContinousX)
+#             XFinal = np.concatenate((MBiomeX, ClinicalContinousX), axis=1)
+#         else:
+#             XFinal = MBiomeX
+        
+#     def transform(self, DataList):
+#         """
+#         params:
+#             DataList = list of 3 arrays, 1 (index 0) expected to be microbiome data, 2 (index 1) expected to be continuous
+#             clinical data, 3 (index 2) expected to be binary clinical data. 
+#         Note:
+#             You should sort all clinical data by binary status if you would like the order of varianbles preserved for clinical
+#             data. If PCA is run, first n_components variables are standard normalized PCA values, all variables after that are
+#             from elements 2 and 3 of DataList.
+#         """
+        
+#         MBiomeX = DataList[0]
+#         ClinicalContinousX = DataList[1]
+#         ClinicalBinaryX = DataList[2]
+        
+#         MBiomeX = self.microbiome_scaler.transform(MBiomeX)
+        
+#         if self.use_PCA:
+#             MBiomeX = self.microbiome_PCA.transform(MBiomeX)
+            
+#         if not ClinicalContinousX is None:
+#             ClinicalContinousX = self.clinical_scaler.transform(ClinicalContinousX)
+#             XFinal = np.concatenate((MBiomeX, ClinicalContinousX), axis=1)
+#         else:
+#             XFinal = MBiomeX
+        
+#         if not ClinicalBinaryX is None:
+#             XFinal = np.concatenate((XFinal, ClinicalBinaryX), axis=1)
+        
+#         return XFinal
         
         
 class Trainer:
@@ -115,60 +215,44 @@ class Trainer:
     Wrapper for training allowing for std normalization and/or PCA prior to running
     
     model = sklearn model implementing fit and predict
-    scale_X = standard normalize X
-    scale_y = standard normalize y
+    transformer
     use_pca = use PCA on X prior to feeding to model
     n_components = # components for PCA
     """
     
-    def __init__(self, model, scale_X = True, scale_y = False, use_pca = False, n_components = 100, **args):
+    def __init__(self, model, pipeline_X = None, pipeline_y = None, **args):
         
         self.model = model
-        self.X_scaler = None
-        self.y_scaler = None
+        self.pipeline_X = pipeline_X
+        self.pipeline_y = pipeline_y
         
-        if scale_X:
-            self.X_scaler = StandardScaler()
-            
-        if scale_y:
-            self.y_scaler = StandardScaler()
-            
-        self.pca_model = None
-        
-        if use_pca:
-            self.pca_model = PCA(n_components = n_components)
         
     def transform_X(self, X):
         
-        if not self.X_scaler is None:
-            X = self.X_scaler.transform(X)
-            
-        if not self.pca_model is None:
-            X = self.pca_model.transform(X)
+        if not self.pipeline_X is None:
+            X = self.pipeline_X.transform(X)
             
         return X
     
     def transform_y(self, y):
         
-        if not self.y_scaler is None:
-            y = self.y_scaler.transform(y)
+        if not self.pipeline_y is None:
+            y = self.pipeline_y.transform(y)
             
         return y 
         
     def fit(self, X, y, epochs=1, class_weight={}, batch_size=1, validation_data=None):
         # print("ARGS")
         # print(**args)
-        if not self.X_scaler is None:
-            self.X_scaler.fit(X)
+        if not self.pipeline_X is None:
+            self.pipeline_X.fit(X)
             
-        if not self.y_scaler is None:
-            self.y_scaler.fit(y)
-            
-        if not self.pca_model is None:
-            self.pca_model.fit(X)
+        if not self.pipeline_y is None:
+            self.pipeline_y.fit(y)
             
         X = self.transform_X(X)
-        y = self.transform_y(y)    
+        y = self.transform_y(y)
+        
         if validation_data is None:
             self.model.fit(X, y)
         else:
@@ -197,8 +281,6 @@ class Trainer:
         """
         y_pred = self.predict(X)
         y = self.transform_y(y)
-#         print(y_pred.shape)
-#         print(y.shape)
         score_value = score(y_pred, y)
         return score_value
         
@@ -248,7 +330,7 @@ class TrainTester:
             X_train = [ data_i[train_idx] for data_i in X ]
             if do_validation:
                 X_val = [ data_i[val_idx] for data_i in X ]
-            X_test = [ data_i[X_test_idx] for data_i in X ]
+            X_test = [ data_i[test_idx] for data_i in X ]
         else:
             X_train = X[train_idx, :]
             if do_validation:
