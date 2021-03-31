@@ -281,7 +281,7 @@ class Trainer:
         """
         y_pred = self.predict(X)
         y = self.transform_y(y)
-        score_value = score(y_pred, y)
+        score_value = score(y, y_pred)
         return score_value
         
 
