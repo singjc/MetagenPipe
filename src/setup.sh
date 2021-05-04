@@ -39,5 +39,6 @@ conda install -c conda-forge xgboost -y
 conda install jupyter -y
 conda install openpyxl -y
 conda install pytorch -y
+conda install -c anaconda beautifulsoup4 -y
 conda deactivate
 
