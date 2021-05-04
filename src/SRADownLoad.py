@@ -100,9 +100,9 @@ def RunAll(expt_acc_list, download_dir):
         run_dict = QuerySRA(expt_acc)
         run_df = pd.DataFrame(run_dict)
         if m > 0:
-            all_runs_df.append(run_df)
+            all_runs_df.append(run_df.copy())
         else:
-            all_runs_df = run_df
+            all_runs_df = run_df.copy()
             m += 1
         for run_acc in run_dict['RunID']:
             DownloadRun(run_acc, download_dir)
