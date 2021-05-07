@@ -41,5 +41,6 @@ conda install openpyxl -y
 conda install pytorch -y
 conda install -c anaconda beautifulsoup4 -y
 conda install lxml -y
+conda install -c bioconda seqtk -y
 conda deactivate
 
