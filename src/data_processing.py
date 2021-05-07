@@ -7,6 +7,7 @@ import os
 import subprocess
 import multiprocessing
 from datetime import datetime
+import re
 
 
 def check_seqtk_install():
@@ -49,7 +50,7 @@ def check_kneaddata_install():
     '''
     Check to see if seqtk is installed
     '''
-    exitcode = subprocess.getstatusoutput("kneaddate")[0]
+    exitcode = subprocess.getstatusoutput("kneaddata")[0]
     assert( exitcode==127 ), "Could not verify kneaddata! Make sure you have the program installed!"
 
 def kneaddata_call( fastq_file, reference_db, output_dir, **kwargs ):
@@ -129,6 +130,69 @@ def run_kneaddata( fastq_files, reference_db, output_dir, nthreads ):
     pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool) )
     pool.close()
     pool.join()
+
+# MetaPhlan 3.0
+
+def metaphlan_call( input_file, input_type, output_dir_bowtie, output_dir_profile, nthreads ):
+    """
+    Function call to process files with metaphlan3
+    :param input_file: list or iterable containing files to be processed
+    :param input_type: str, one of 'fastq', 'bowtie2out'. if bowtie2 out, use input files must be alignemnts from bowtie2
+     see metaphlan3 documentation for more details.
+    :param output_dir_bowtie: output directory for bowtie2 output
+    :param output_dir_profile: output directory for functional profiles
+    :param nthreads: number of threads to run
+    :return:
+    """
+    if not os.path.exists(output_dir_profile):
+        os.mkdir(output_dir_profile)
+
+    cmd = ['metaphlan', input_file]
+    if input_type == 'bowtie2out':
+        suffix = '\\.bowtie2\\.bz2$'
+
+    elif input_type == 'fastq':
+        suffix = '\\.fastq$'
+        bowtie2_file = re.sub(suffix, '.bowtie2.bz2', input_file)
+        if not os.path.exists(output_dir_bowtie):
+            os.mkdir(output_dir_bowtie)
+        cmd.append('--bowtie2out')
+        bowtie2_fpath = os.path.join(output_dir_bowtie, bowtie2_file)
+        cmd.append(bowtie2_fpath)
+    else:
+        raise ValueError('input_type must be fastq for bowtie2out')
+
+    profile_output_file=re.sub(suffix, '_profile.txt', input_file)
+    cmd.append('--nproc')
+    cmd.append(nthreads)
+    cmd.append('--input_type')
+    cmd.append(input_type)
+    cmd.append('-o')
+    profile_fpath = os.path.join(output_dir_profile, profile_output_file)
+    cmd.append(profile_fpath)
+    process = subprocess.Popen(cmd)
+    while True:
+        return_code = process.poll()
+        if return_code is not None:
+            click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Process has finished with return code: {return_code}" )
+            if input_type == 'fastq':
+                click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: bowtie2 file written to {bowtie2_fpath}" )
+            click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: profile file written to {profile_fpath}" )
+            break
+
+
+@cli.command()
+@click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--output_dir_bowtie', default=(os.getcwd()+"/metaphlan_bowtie2out/"), show_default=True, type=str, help='Directory to store bowtie2 results.')
+@click.option('--output_dir_profile', default=(os.getcwd()+"/metaphlan_profiles/"), show_default=True, type=str, help='Directory to store species profile results.')
+@click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+def run_metaphlan( inp_files, input_type, output_dir_bowtie, output_dir_profile, nthreads ):
+
+    if len(inp_files) < 1:
+        click.ClickException("At least one input file needs to be provided.")
+
+    for f in inp_files:
+        metaphlan_call(f, input_type, output_dir_bowtie, output_dir_profile, nthreads)
 
 
 if __name__ == '__main__':
