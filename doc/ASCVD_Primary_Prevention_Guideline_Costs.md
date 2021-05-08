@@ -12,6 +12,7 @@
 - [Costs for Gut Microbiome Sequencing](#costs-for-gut-microbiome-sequencing)
   - [Stool Collection Kit](#stool-collection-kit)
   - [Shotgun Metagenomic Sequencing](#shotgun-metagenomic-sequencing)
+  - [Amplicon Sequencing (16S, 18S, ITS, etc.)](#amplicon-sequencing-16s-18s-its-etc)
 
 
 # Atherosclerotic Cardiovascular Disease (ASCVD) Diagnostics Tests and Costs
@@ -89,13 +90,44 @@ Testing for the following biomarkers of inflammation and lipid-related markers i
 
 
 
-| Metagenomes - NextSeq (150+150 bp PE) - Regular Depths 									                       |                |            |                |             |
-|-------------------------------------------------------------------------------|----------------|------------|----------------|-------------|
-|                                        											                                       | Academic/Govt.		 |            |   Commercial 									  |             |
-|                                        														                                       | Per run of (X)	 | Per sample	 | Per run of (X)	 | Per sample 									 |
-| Library Prep. + Sequencing (~4 M PE reads = 8 M single reads & 1.2 Gb/sample)					 | $14400 (96)	    | $150		       | $21120 (96)	    | $220 									       |
-|       or 2X depth (~8 M PE reads = 16 M single reads & 2.4 Gb/sample)	         | $12000 (48)	    | $250		       | $15360 (48)	    | $320 									       |
-|       or 3X depth (~12 M PE reads = 24 M single reads & 3.6 Gb/sample)	        | $11200 (32)	    | $350		       | $13440 (32)	    | $420 									       |
-|       or 4X depth (~16 M PE reads = 32 M single reads & 4.8 Gb/sample)	        | $10800 (24)	    | $450		       | $12480 (24)	    | $520 									       |
-| DNA Extraction3											                                                               | variable		       | $15		        | variable		       | $20 									        |
-| Standard Bioinformatics Analysis Pipeline5								                                    | $750/project						   |            | $1500/project 								 |             |
+| Metagenomes - NextSeq (150+150 bp PE) - High Depths 									                                   |                |                 |
+|----------------------------------------------------------------------------------------|----------------|-----------------|
+|                                            									                                            | Academic/Govt.	 |   Commercial 									   |
+|                                            												                                            | Per run of (X)				 | Per run of (X) 									 |
+| Library Prep. + Sequencing (Whole run = ~400 M PE reads = 800 M single reads & 120 Gb)		 | -					              | - 									              |
+|       <6 samples (80+ M PE reads = 160+ M single reads)		                                | $7000 (<6)				     | $10500 (<6) 									    |
+|       6-8 samples (~50-67 M PE reads = 100-133 M single reads)	                         | $8000 (6-8)				    | $12000 (6-8) 									   |
+|       9-10 samples (~40-44 M PE reads = 80-88 M single reads)	                          | $9000 (9-10)				   | $13500 (9-10) 									  |
+|       11-12 samples (~33-36 M PE reads = 67-73 M single reads)	                         | $10000 (11-12)				 | $15000 (11-12) 									 |
+| DNA Extraction3									                                                                        | variable					       | variable 									       |
+| Standard Bioinformatics Analysis Pipeline5						                                             | $750/project				   | $1500/project 								  |
+
+## Amplicon Sequencing (16S, 18S, ITS, etc.)
+
+| 16S/18S/ITS Short Amplicons (per sample, per amplicon) - MiSeq (300+300 bp PE) - Academic/Govt. 									 |              |                |                |
+|--------------------------------------------------------------------------------------------------|--------------|----------------|----------------|
+|                                                 												                                                 |  <50 samples	 | 50-200 samples	 | >200 samples1 									 |
+| Library Preparation + Sequencing (max. 50k reads/sample2)				                                        | $30		          | $25			            | $20 									           |
+|       or 2X depth (max. 100k reads/sample2)	                                                      | $45		          | $38			            | $30 									           |
+| DNA Extraction3									                                                                                  | $15		          | $15			            | $15 									           |
+| Standard Bioinformatics Analysis Pipeline4						                                                       | $500/project	 | $750/project	   | $1000/project 								 |
+
+
+| 16S/18S/ITS Short Amplicons (per sample, per amplicon) - MiSeq (300+300 bp PE) - Commercial 									 |              |                |                |
+|----------------------------------------------------------------------------------------------|--------------|----------------|----------------|
+|                                               												                                               |  <50 samples	 | 50-200 samples	 | >200 samples1 									 |
+| Library Preparation + Sequencing (max. 50k reads/sample2)				                                    | $40		          | $35			            | $30 									           |
+|       or 2X depth (max. 100k reads/sample2)	                                                  | $60		          | $53			            | $45 									           |
+| DNA Extraction3									                                                                              | $20		          | $20			            | $20 									           |
+| Standard Bioinformatics Analysis Pipeline4						                                                   | $750/project	 | $1000/project	  | $1500/project 								 |
+
+
+| 16S/18S/ITS Full-Length Amplicons (per sample, per amplicon) - PacBio Sequel (long reads) 									 |                |                |
+|--------------------------------------------------------------------------------------------|----------------|----------------|
+|                                              									                                              | Academic/Govt.	 |   Commercial 									  |
+|                                              												                                              |   Per sample				   |   Per sample 									  |
+| Library Prep. + Sequencing (max. 5k CCS reads/sample2)				                                     | ~~$50~~ $45    | ~~$75~~ $67 									   |
+|       or 2X depth (max. 10k reads/sample2)	                                                 | ~~$75~~ $67    | ~~$115~~ $100 									 |
+|       or 0.5X depth (max. 2k reads/sample2) < Sanger alternative for mostly pure samples	   | ~~$30~~ $25    | ~~$45~~ $40 									   |
+| DNA Extraction3									                                                                            | $15					            | $20 									           |
+| Custom Bioinformatics Analysis									                                                             | inquire					        | inquire 								       |
