@@ -224,7 +224,7 @@ def parse_metaphlan_file( input_file ):
         dict_out[taxa_name] = np.array([rel_abundance[i]]).astype('float32')
     # get rid of file ending for row name for output dataframe
     row_name = re.sub('\\.[A-z0-9]+', '', os.path.basename(input_file))
-    pd_df_out = pd.DataFrame(dict_out, index=)
+    pd_df_out = pd.DataFrame(dict_out, index=row_name)
     try:
         # check that relative abundance sums to 100 percent
         total_pct = pd_df_out.to_numpy(dtype='float32').sum()
