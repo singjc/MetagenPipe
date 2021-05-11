@@ -46,7 +46,6 @@ conda install lxml -y
 conda install -c bioconda seqtk -y
 conda install -c conda-forge mamba -y
 conda install -c conda-forge bioconda::snakemake -y
-conda install -c anaconda click -y
 # metaphlan + kneaddata install databases
 mkdir /databases
 metaphlan --install --index mpa_v30_CHOCOPhlAn_201901 --bowtie2db /databases/metaphlan/
