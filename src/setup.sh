@@ -2,6 +2,8 @@
 set -e
 # wget for downloading files
 #apt-get install wget
+# inetall libtbb2, bowtie2 depends on this
+apt-get install libtbb2
 # install java
 dpkg -i /misc_files/jdk-15.0.2_linux-x64_bin.deb
 # install sra toolkit
@@ -45,5 +47,9 @@ conda install -c bioconda seqtk -y
 conda install -c conda-forge mamba -y
 conda install -c conda-forge bioconda::snakemake -y
 conda install -c anaconda click -y
+# metaphlan + kneaddata install databases
+mkdir /databases
+metaphlan --install --index mpa_v30_CHOCOPhlAn_201901 --bowtie2db /databases/metaphlan/
+kneaddata_database --download human_genome bowtie2 /databases/kneaddata_human_bowtie2
 conda deactivate
 
