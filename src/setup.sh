@@ -42,5 +42,8 @@ conda install pytorch -y
 conda install -c anaconda beautifulsoup4 -y
 conda install lxml -y
 conda install -c bioconda seqtk -y
+conda install -c conda-forge mamba -y
+conda install -c conda-forge bioconda::snakemake -y
+conda install -c anaconda click -y
 conda deactivate
 

@@ -1,0 +1,13 @@
+rule all:
+	input:
+		"sra_download.done"
+
+rule sra_download:
+	input:
+		accessions = ""
+	output:
+		check=temp(touch("sra_download.done"))
+	params:
+		output_dir="/project/data/raw/SRA/",
+	shell:
+		"python SRADownLoad.py -E {input.accessions} -d {params.output_dir}"
