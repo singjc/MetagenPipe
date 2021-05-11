@@ -1,0 +1,43 @@
+run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+
+rule all:
+	input:
+		"kneaddata.done"
+
+rule subsample_fastq:
+	input:
+		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
+	output:
+		subsampled_fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
+	params:
+		subsample_fraction=5000,
+		output_dir="results/raw_subsampled/",
+		nthreads=2
+	threads: 2
+	#conda:
+		#"envs/seqtk.yml"
+	shell:
+		#"python -c \"import subprocess; print(subprocess.getstatusoutput( 'seqtk' )[0])\" && "
+		"python /project/src/data_processing.py run-seqtk --subsample_fraction={params.subsample_fraction} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq}" 
+		#"mkdir results/raw_subsampled/ && "
+		#"mv /project/data/raw/SRA/*_seed_* results/raw_subsampled/"
+
+rule kneaddata:
+	input:
+		fastq = rules.subsample_fastq.output.subsampled_fastq,
+	output:
+		check=temp(touch("kneaddata.done")),
+		kneaded_fastq = expand("results/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)	
+	params:
+		reference_db="/project/data/human_reference_database/hg37dec_v0.1.4.bt2",
+		output_dir="results/kneadeddata/",
+		nthreads=2
+	threads: 2
+	#conda:
+		#"envs/kneaddata.yml"
+	shell:
+		"python /project/src/data_processing.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq}"
+
+#rule metaphlan:
+
+#rule export:
