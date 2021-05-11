@@ -4,6 +4,7 @@ import numpy as np
 import click
 import sys
 import os
+import glob
 import subprocess
 import multiprocessing
 from datetime import datetime
@@ -58,7 +59,7 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Subsampled file written to {fastq_subsampled_file}" )
             break
 
-def kneaddata_call( fastq_file, reference_db, output_dir, **kwargs ):
+def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs ):
     '''
     Make a system call to kneaddata
     '''
@@ -70,13 +71,13 @@ def kneaddata_call( fastq_file, reference_db, output_dir, **kwargs ):
     shell_cmd_list = ['kneaddata', '--input']
     shell_cmd_list.append( fastq_file )
     shell_cmd_list.append( '--trimmomatic' )
-    shell_cmd_list.append( '/root/anaconda/envs/microbiome/share/trimmomatic-0.39-1/' )
+    shell_cmd_list.append( trimmomatic )
     shell_cmd_list.append( '--reference-db' )
     shell_cmd_list.append( reference_db )
     shell_cmd_list.append( '--output' )
     shell_cmd_list.append( output_dir )
     click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Executing kneaddate for {fastq_file}" )
-    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: kneaddate command: {shell_cmd_list}" )
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: kneaddata command: {shell_cmd_list}" )
     process = subprocess.Popen( shell_cmd_list, stdout=subprocess.PIPE )
     # Check process
     while True:
@@ -106,7 +107,7 @@ def metaphlan_call( input_file, input_type, output_dir_bowtie, output_dir_profil
 
     elif input_type == 'fastq':
         suffix = '\\.fastq$'
-        bowtie2_file = re.sub(suffix, '.bowtie2.bz2', input_file)
+        bowtie2_file = re.sub(suffix, '.bowtie2.bz2', os.path.basename(input_file))
         if not os.path.exists(output_dir_bowtie):
             os.mkdir(output_dir_bowtie)
         cmd.append('--bowtie2out')
@@ -115,15 +116,16 @@ def metaphlan_call( input_file, input_type, output_dir_bowtie, output_dir_profil
     else:
         raise ValueError('input_type must be fastq for bowtie2out')
 
-    profile_output_file=re.sub(suffix, '_profile.txt', input_file)
+    profile_output_file=re.sub(suffix, '_profile.txt', os.path.basename(input_file))
     cmd.append('--nproc')
-    cmd.append(nthreads)
+    cmd.append( str(nthreads) )
     cmd.append('--input_type')
     cmd.append(input_type)
     cmd.append('-o')
     profile_fpath = os.path.join(output_dir_profile, profile_output_file)
     cmd.append(profile_fpath)
-    process = subprocess.Popen(cmd)
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: metaphlan command: {cmd}" )
+    process = subprocess.Popen( cmd, stdout=subprocess.PIPE )
     while True:
         return_code = process.poll()
         if return_code is not None:
@@ -132,16 +134,6 @@ def metaphlan_call( input_file, input_type, output_dir_bowtie, output_dir_profil
                 click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: bowtie2 file written to {bowtie2_fpath}" )
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: profile file written to {profile_fpath}" )
             break
-
-# def metaphlan_call( **kwargs ):
-#     '''
-#     Make a system call to metaphlan
-#     '''
-#
-# def prepare_export():
-#     '''
-#     Parse output from metaphlan and export an abundance matrix
-#     '''
 
 # Main Command Line Interface
 @click.group(chain=True)
@@ -189,9 +181,10 @@ def run_seqtk( fastq_files, subsample_fraction, output_dir, two_pass_mode, rng_s
 @click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
 @click.option('--reference_db', type=click.Path(exists=True), help='Reference Datanase file.')
 @click.option('--output_dir', default=(os.getcwd()+"/kneadeddata/"), show_default=True, type=str, help='Directory to store results.')
+@click.option('--trimmomatic', default=(glob.glob("/root/anaconda/envs/**/trimmomatic-*/", recursive=True)), show_default=True, type=str, help='Directory to store results.')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
 @click.pass_context
-def run_kneaddata( ctx, fastq_files, reference_db, output_dir, nthreads ):
+def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthreads ):
     '''
     Main function call to process the data with kneaddata
     '''
@@ -206,9 +199,10 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, nthreads ):
     fastq_files = list(fastq_files)
     reference_db_pool = [reference_db] * len(fastq_files)
     output_dir_pool = [output_dir] * len(fastq_files)
+    trimmomatic_pool = [trimmomatic] * len(fastq_files)
     # Initiate a pool with nthreads for parallel processing
     pool = multiprocessing.Pool( nthreads )
-    pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool) )
+    pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool, trimmomatic_pool) )
     pool.close()
     pool.join()
 
@@ -217,11 +211,14 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, nthreads ):
 
 @cli.command()
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--input_type', default=1, show_default=True, type=str, help="one of 'fastq', 'bowtie2out'. if bowtie2 out, use input files must be alignemnts from bowtie2 see metaphlan3 documentation for more details.")
 @click.option('--output_dir_bowtie', default=(os.getcwd()+"/metaphlan_bowtie2out/"), show_default=True, type=str, help='Directory to store bowtie2 results.')
 @click.option('--output_dir_profile', default=(os.getcwd()+"/metaphlan_profiles/"), show_default=True, type=str, help='Directory to store species profile results.')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
 def run_metaphlan( inp_files, input_type, output_dir_bowtie, output_dir_profile, nthreads ):
-
+    '''
+    Main function call to process the data with metaphlan
+    '''
     if len(inp_files) < 1:
         click.ClickException("At least one input file needs to be provided.")
 
