@@ -10,19 +10,19 @@ from datetime import datetime
 import re
 
 
-def check_seqtk_install():
+def check_external_program_install( external_program ):
     '''
-    Check to see if seqtk is installed
+    Check to see if an external program is installed
     '''
-    exitcode = subprocess.getstatusoutput("seqtk")[0]
-    assert( exitcode==127 ), "Could not verify seqtk! Make sure you have the program installed!"
+    exitcode = subprocess.getstatusoutput( external_program )[0]
+    assert( exitcode==127 ), f"Could not verify {external_program}! Make sure you have the program installed!"
 
 def seqtk_call( fastq_file, subsample_fraction, two_pass_mode=False, rng_seed=100  ):
     '''
     Make a system call to seqtk
     '''
     ## Check to make sure seqtk is installed.
-    check_seqtk_install()
+    check_external_program_install( "seqtk" )
     ## Get base filename
     root, ext = os.path.splitext( fastq_file )
     ## Generate subsampled filename to write to
@@ -46,18 +46,12 @@ def seqtk_call( fastq_file, subsample_fraction, two_pass_mode=False, rng_seed=10
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Subsampled file written to {fastq_subsampled_file}" )
             break
 
-
-def check_kneaddata_install():
-    '''
-    Check to see if kneaddata is installed
-    '''
-    exitcode = subprocess.getstatusoutput("kneaddata")[0]
-    assert( exitcode==127 ), "Could not verify kneaddata! Make sure you have the program installed!"
-
-
 def kneaddata_call( fastq_file, reference_db, output_dir, **kwargs ):
+    '''
+    Make a system call to kneaddata
+    '''
     ## Check to make sure kneaddate is installed.
-    check_kneaddata_install()
+    check_external_program_install( "kneaddata" )
     ## Generate list command
     shell_cmd_list = ['kneaddata', '--input']
     shell_cmd_list.append( fastq_file )
@@ -78,83 +72,20 @@ def kneaddata_call( fastq_file, reference_db, output_dir, **kwargs ):
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: kneaddata results written to {output_dir,}" )
             break
 
-
-@click.group(chain=True)
-@click.version_option()
-def cli():
-    '''
-    Data Processing
-    '''
-
-# Main Subsampling with seqtk
-@cli.command()
-@click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
-@click.option('--subsample_fraction', default=50000, show_default=True, type=float, help='Data fraction used for subsampling.')
-@click.option('--two_pass_mode/--no-two_pass_mode', default=False, show_default=True, help='Enable 2 pass mode')
-@click.option('--rng_seed', default=100, show_default=True, type=float, help='Random seed, remember to use the same random seed to keep pairing.')
-@click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
-def run_seqtk( fastq_files, subsample_fraction, two_pass_mode, rng_seed, nthreads ):
-    '''
-    Main function call to subsample fastq files using seqtk
-    '''
-    
-    if len(fastq_files) < 1:
-        raise click.ClickException("At least one fastq file needs to be provided.")
-
-    fastq_files = list(fastq_files)
-    subsample_fraction_pool = [subsample_fraction] * len(fastq_files)
-    two_pass_mode_pool = [two_pass_mode] * len(fastq_files)
-    rng_seed_pool = [rng_seed] * len(fastq_files)
-    pool = multiprocessing.Pool( nthreads )
-    pool.starmap( seqtk_call, zip(fastq_files, subsample_fraction_pool, two_pass_mode_pool, rng_seed_pool) )
-    pool.close()
-    pool.join()
-
-# Main Data Kneading with kneaddata
-@cli.command()
-@click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
-@click.option('--reference_db', type=click.Path(exists=True), help='Reference Datanase file.')
-@click.option('--output_dir', default=(os.getcwd()+"/kneadeddata/"), show_default=True, type=str, help='Directory to store results.')
-@click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
-def run_kneaddata( fastq_files, reference_db, output_dir, nthreads ):
-    '''
-    Main function call to process the data with kneaddata
-    '''
-    
-    if len(fastq_files) < 1:
-        raise click.ClickException("At least one fastq file needs to be provided.")
-    if not os.path.exists( output_dir ):
-        os.makedirs( output_dir )
-    fastq_files = list(fastq_files)
-    reference_db_pool = [reference_db] * len(fastq_files)
-    output_dir_pool = [output_dir] * len(fastq_files)
-    pool = multiprocessing.Pool( nthreads )
-    pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool) )
-    pool.close()
-    pool.join()
-
-# MetaPhlan 3.0
-def check_metaphlan_install():
-    '''
-    Check to see if metaphlan is installed
-    '''
-    exitcode = subprocess.getstatusoutput("metaphlan")[0]
-    assert( exitcode==127 ), "Could not verify metaphlan! Make sure you have the program installed!"
-
 def metaphlan_call( input_file, input_type, output_dir_bowtie, output_dir_profile, nthreads ):
     """
-    Function call to process files with metaphlan3
+    System call to process files with metaphlan3
     :param input_file: list or iterable containing files to be processed
     :param input_type: str, one of 'fastq', 'bowtie2out'. if bowtie2 out, use input files must be alignemnts from bowtie2
      see metaphlan3 documentation for more details.
     :param output_dir_bowtie: output directory for bowtie2 output
     :param output_dir_profile: output directory for functional profiles
     :param nthreads: number of threads to run
-    :return:
+    :return: metaphlan output is made in output directory
     """
+    check_external_program_install("metaphlan")
     if not os.path.exists(output_dir_profile):
         os.mkdir(output_dir_profile)
-
     cmd = ['metaphlan', input_file]
     if input_type == 'bowtie2out':
         suffix = '\\.bowtie2\\.bz2$'
@@ -188,6 +119,83 @@ def metaphlan_call( input_file, input_type, output_dir_bowtie, output_dir_profil
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: profile file written to {profile_fpath}" )
             break
 
+# def metaphlan_call( **kwargs ):
+#     '''
+#     Make a system call to metaphlan
+#     '''
+#
+# def prepare_export():
+#     '''
+#     Parse output from metaphlan and export an abundance matrix
+#     '''
+
+# Main Command Line Interface
+@click.group(chain=True)
+@click.version_option()
+@click.pass_context
+def cli( ctx ):
+    '''
+    Raw Data Processing for Microbiome Metagenomics Data
+    '''
+
+# Main Subsampling with seqtk
+@cli.command()
+@click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--subsample_fraction', default=50000, show_default=True, type=float, help='Data fraction used for subsampling.')
+@click.option('--two_pass_mode/--no-two_pass_mode', default=False, show_default=True, help='Enable 2 pass mode')
+@click.option('--rng_seed', default=100, show_default=True, type=float, help='Random seed, remember to use the same random seed to keep pairing.')
+@click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+def run_seqtk( fastq_files, subsample_fraction, two_pass_mode, rng_seed, nthreads ):
+    '''
+    Main function call to subsample fastq files using seqtk
+    '''
+    
+    if len(fastq_files) < 1:
+        raise click.ClickException("At least one fastq file needs to be provided.")
+    # Prepare args for parallel processing
+    fastq_files = list(fastq_files)
+    subsample_fraction_pool = [subsample_fraction] * len(fastq_files)
+    two_pass_mode_pool = [two_pass_mode] * len(fastq_files)
+    rng_seed_pool = [rng_seed] * len(fastq_files)
+    # Initiate a pool with nthreads for parallel processing
+    pool = multiprocessing.Pool( nthreads )
+    pool.starmap( seqtk_call, zip(fastq_files, subsample_fraction_pool, two_pass_mode_pool, rng_seed_pool) )
+    pool.close()
+    pool.join()
+
+# Main Data Kneading with kneaddata
+@cli.command(context_settings=dict(
+    ignore_unknown_options=True,
+    allow_extra_args=True,
+))
+@click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--reference_db', type=click.Path(exists=True), help='Reference Datanase file.')
+@click.option('--output_dir', default=(os.getcwd()+"/kneadeddata/"), show_default=True, type=str, help='Directory to store results.')
+@click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+@click.pass_context
+def run_kneaddata( ctx, fastq_files, reference_db, output_dir, nthreads ):
+    '''
+    Main function call to process the data with kneaddata
+    '''
+    # Handle additional args TODO: Still not working... extra args are not being passed to the sub command for some reason
+    extra_args = dict([item.strip('--').split('=') for item in ctx.args])
+    # print( extra_args )
+    if len(fastq_files) < 1:
+        raise click.ClickException("At least one fastq file needs to be provided.")
+    if not os.path.exists( output_dir ):
+        os.makedirs( output_dir )
+    # Prepare args for parallel processing
+    fastq_files = list(fastq_files)
+    reference_db_pool = [reference_db] * len(fastq_files)
+    output_dir_pool = [output_dir] * len(fastq_files)
+    # Initiate a pool with nthreads for parallel processing
+    pool = multiprocessing.Pool( nthreads )
+    pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool) )
+    pool.close()
+    pool.join()
+
+
+# Main MetaPhlan
 
 @cli.command()
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
@@ -241,7 +249,7 @@ def parse_metaphlan_file( input_file ):
 @click.option('--outfile', default=('relative_abundances.csv'), show_default=True, type=str, help='filename for matrix output')
 def parse_metaphlan_multi( inp_files, output_dir='./', outfile='relative_abundances.csv' ):
     """
-    Parse a list or iterable of metaphlan output files
+    Parse a list or iterable of metaphlan output files. Note that taxa may vary from file to file
     :param inp_files: input files. list or iterable of strings
     :param output_dir: output directory to store matrix
     :return: writes matrix to file
@@ -275,6 +283,49 @@ def parse_metaphlan_multi( inp_files, output_dir='./', outfile='relative_abundan
             df_c.append(df_i)
 
     df_c.to_csv(os.path.join(output_dir, outfile))
+
+# =======
+# # Main Processing with MetaPhlan
+# @cli.command()
+# @click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
+# @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+# def run_metaphlan( fastq_files, nthreads ):
+#     '''
+#     Main function call to process the data with metaphlan
+#     '''
+#
+#     if len(fastq_files) < 1:
+#         raise click.ClickException("At least one fastq file needs to be provided.")
+#
+#     # Prepare args for parallel processing
+#     fastq_files = list(fastq_files)
+#     # Initiate a pool with nthreads for parallel processing
+#     pool = multiprocessing.Pool( nthreads )
+#     pool.starmap( metaphlan_call, zip(fastq_files) )
+#     pool.close()
+#     pool.join()
+#
+# # Main Exporting an Abundance Matrix
+# @cli.command()
+# @click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
+# @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+# def export( fastq_files, nthreads ):
+#     '''
+#     Main function call to export an abundance matrix
+#     '''
+#
+#     if len(fastq_files) < 1:
+#         raise click.ClickException("At least one fastq file needs to be provided.")
+#
+#     # Prepare args for parallel processing
+#     fastq_files = list(fastq_files)
+#     # Initiate a pool with nthreads for parallel processing
+#     # NOTE: You may not need to use parallel processing to generate the export abundance matrix, depending on how you script it
+#     pool = multiprocessing.Pool( nthreads )
+#     pool.starmap( prepare_export, zip(fastq_files) )
+#     pool.close()
+#     pool.join()
+# >>>>>>> 96c59d0f074cb75e4aeb19a0f776911201368f69
 
 
 if __name__ == '__main__':
