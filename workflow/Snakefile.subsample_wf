@@ -1,4 +1,5 @@
 run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+#run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
 
 rule all:
 	input:
@@ -12,8 +13,8 @@ rule subsample_fastq:
 	params:
 		subsample_fraction=50000,
 		output_dir="results/raw_subsampled/",
-		nthreads=2
-	threads: 2
+		nthreads=6
+	threads: 6
 	#conda:
 		#"envs/seqtk.yml"
 	log:
@@ -28,15 +29,16 @@ rule subsample_fastq:
 rule kneaddata:
 	input:
 		fastq = rules.subsample_fastq.output.subsampled_fastq,
+		#fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
 	output:
 		#check=temp(touch("kneaddata.done")),
 		kneaded_fastq = expand("results/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)	
 	params:
-		reference_db="/project/data/human_reference_database/hg37dec_v0.1.4.bt2",
+		reference_db="/databases/kneaddata_human_bowtie2/hg37dec_v0.1.4.bt2",
 		output_dir="results/kneadeddata/",
 		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
-		nthreads=2
-	threads: 2
+		nthreads=6
+	threads: 6
 	#conda:
 		#"envs/kneaddata.yml"
 	log:
@@ -59,8 +61,8 @@ rule metaphlan:
 		input_type="fastq",
 		output_dir_bowtie="results/metaphlan_bowtie2out",
 		output_dir_profile="results/metaphlan_profiles/",
-		nthreads=2
-	threads: 2
+		nthreads=6
+	threads: 6
 	log:
 		"logs/metaphlan.log"
 	shell:
