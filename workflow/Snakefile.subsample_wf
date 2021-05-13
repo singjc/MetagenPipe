@@ -1,35 +1,35 @@
-#run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
-run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
+run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+#run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
 
 rule all:
 	input:
 		"metaphlan.done"
 
-#rule subsample_fastq:
-#	input:
-#		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
-#	output:
-#		subsampled_fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
-#	params:
-#		subsample_fraction=50000,
-#		output_dir="results/raw_subsampled/",
-#		nthreads=2
-#	threads: 2
-#	#conda:
-#		#"envs/seqtk.yml"
-#	log:
-#		"logs/subsample_fastq.log"
-#	shell:
-#		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-#		"python /project/src/data_processing.py run-seqtk --subsample_fraction={params.subsample_fraction} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&" 
-#		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-#		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
-#		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+rule subsample_fastq:
+	input:
+		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
+	output:
+		subsampled_fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
+	params:
+		subsample_fraction=50000,
+		output_dir="results/raw_subsampled/",
+		nthreads=6
+	threads: 6
+	#conda:
+		#"envs/seqtk.yml"
+	log:
+		"logs/subsample_fastq.log"
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"python /project/src/data_processing.py run-seqtk --subsample_fraction={params.subsample_fraction} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&" 
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
 
 rule kneaddata:
 	input:
-		#fastq = rules.subsample_fastq.output.subsampled_fastq,
-		fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
+		fastq = rules.subsample_fastq.output.subsampled_fastq,
+		#fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
 	output:
 		#check=temp(touch("kneaddata.done")),
 		kneaded_fastq = expand("results/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)	
