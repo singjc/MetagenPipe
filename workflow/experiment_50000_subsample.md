@@ -11,6 +11,41 @@ This is based on 211 raw fastq files.
 4.5G	results/raw_subsampled
 ```
 
+File/folder size of raw data
+```
+(microbiome) root@97b0edf71e22:/project/# du -sh data/raw/SRA/
+6.5T	data/raw/SRA/
+```
+
+## SRA Download
+Takes 1 day, 17 hours, 5 minutes and 44 seconds to download 384 fastq accessions
+
+```
+INFO: 384 accessions were successfully downloaded
+INFO: 20 accessions failed to download (no data)
+INFO: Failed accessions list:
+'ERR2017425' - no data
+'ERR2017480' - no data
+'ERR2017488' - no data
+'ERR2017492' - no data
+'ERR2017493' - no data
+'ERR2017496' - no data
+'ERR2017497' - no data
+'ERR2017498' - no data
+'ERR2017501' - no data
+'ERR2017502' - no data
+'ERR2017505' - no data
+'ERR2017509' - no data
+'ERR2017511' - no data
+'ERR2017582' - no data
+'ERR2017583' - no data
+'ERR2017585' - no data
+'ERR2017758' - no data
+'ERR2017787' - no data
+'ERR2017811' - no data
+'ERR2017812' - no data
+```
+
 ## Subsampling 50000 Reads
 Takes 5 hours and 21 minutes and 54 seconds to subsample 211 fastq files using 2 threads
 
