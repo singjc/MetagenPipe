@@ -5,54 +5,55 @@ rule all:
 	input:
 		"metaphlan.done"
 
-rule subsample_fastq:
-	input:
-		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
-	output:
-		subsampled_fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
-	params:
-		subsample_fraction=500000,
-		output_dir="results/raw_subsampled/",
-		nthreads=6
-	threads: 6
-	#conda:
-		#"envs/seqtk.yml"
-	log:
-		"logs/subsample_fastq.log"
-	shell:
-		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/data_processing.py run-seqtk --subsample_fraction={params.subsample_fraction} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&" 
-		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
-		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
-
-rule kneaddata:
-	input:
-		fastq = rules.subsample_fastq.output.subsampled_fastq,
-		#fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
-	output:
-		#check=temp(touch("kneaddata.done")),
-		kneaded_fastq = expand("results/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)	
-	params:
-		reference_db="/databases/kneaddata_human_bowtie2/hg37dec_v0.1.4.bt2",
-		output_dir="results/kneadeddata/",
-		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
-		nthreads=6
-	threads: 6
-	#conda:
-		#"envs/kneaddata.yml"
-	log:
-		"logs/kneaddata.log"
-	shell:
-		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/data_processing.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
-		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
-		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+#rule subsample_fastq:
+#	input:
+#		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
+#	output:
+#		subsampled_fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
+#	params:
+#		subsample_fraction=500000,
+#		output_dir="results/raw_subsampled/",
+#		nthreads=6
+#	threads: 6
+#	#conda:
+#		#"envs/seqtk.yml"
+#	log:
+#		"logs/subsample_fastq.log"
+#	shell:
+#		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+#		"python /project/src/data_processing.py run-seqtk --subsample_fraction={params.subsample_fraction} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&" 
+#		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+#		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+#		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+#
+#rule kneaddata:
+#	input:
+#		fastq = rules.subsample_fastq.output.subsampled_fastq,
+#		#fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
+#	output:
+#		#check=temp(touch("kneaddata.done")),
+#		kneaded_fastq = expand("results/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)	
+#	params:
+#		reference_db="/databases/kneaddata_human_bowtie2/hg37dec_v0.1.4.bt2",
+#		output_dir="results/kneadeddata/",
+#		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
+#		nthreads=6
+#	threads: 6
+#	#conda:
+#		#"envs/kneaddata.yml"
+#	log:
+#		"logs/kneaddata.log"
+#	shell:
+#		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+#		"python /project/src/data_processing.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+#		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+#		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+#		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
 
 rule metaphlan:
 	input:
-		fastq = rules.kneaddata.output.kneaded_fastq,
+		#fastq = rules.kneaddata.output.kneaded_fastq,
+		fastq = expand("results/kneadeddata/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids)
 	output:
 		check=temp(touch("metaphlan.done")),
 		metaphlan_bowtie2out = expand("results/metaphlan_bowtie2out/{run}_seqt.subsampled_kneaddata.trimmed.bowtie2.bz2", run=run_ids),
