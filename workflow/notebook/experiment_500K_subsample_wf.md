@@ -16,3 +16,5 @@ Takes 8 hours, 41 minutes and 18 seconds using 6 threads to subsample 500k reads
 Takes 2 hours, 2 minutes and 10 seconds using 6 threads to kneade the subsampled 500k reads for 385 fastq files
 ## Metaphlan
 Takes 9 hours, 29 minutes and 5 secionds using 6 threads
+
+![](../img/500k_subsample/metaphlan_profile_report.png)
