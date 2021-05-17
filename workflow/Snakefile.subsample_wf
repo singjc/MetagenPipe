@@ -11,7 +11,7 @@ rule subsample_fastq:
 	output:
 		subsampled_fastq = expand("results/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
 	params:
-		subsample_fraction=50000,
+		subsample_fraction=500000,
 		output_dir="results/raw_subsampled/",
 		nthreads=6
 	threads: 6
@@ -21,7 +21,7 @@ rule subsample_fastq:
 		"logs/subsample_fastq.log"
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/data_processing.py run-seqtk --subsample_fraction={params.subsample_fraction} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&" 
+		"python /project/src/metagenpipe.py run-seqtk --subsample_fraction={params.subsample_fraction} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&" 
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
@@ -45,14 +45,15 @@ rule kneaddata:
 		"logs/kneaddata.log"
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/data_processing.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"python /project/src/metagenpipe.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
 
 rule metaphlan:
 	input:
-		fastq = rules.kneaddata.output.kneaded_fastq,
+		#fastq = rules.kneaddata.output.kneaded_fastq,
+		fastq = expand("results/kneadeddata/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids)
 	output:
 		check=temp(touch("metaphlan.done")),
 		metaphlan_bowtie2out = expand("results/metaphlan_bowtie2out/{run}_seqt.subsampled_kneaddata.trimmed.bowtie2.bz2", run=run_ids),
@@ -61,15 +62,18 @@ rule metaphlan:
 		input_type="fastq",
 		output_dir_bowtie="results/metaphlan_bowtie2out",
 		output_dir_profile="results/metaphlan_profiles/",
-		nthreads=6
+		output_report="results/",
+		nthreads=6,
+		ext="png"
 	threads: 6
 	log:
 		"logs/metaphlan.log"
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/data_processing.py run-metaphlan --input_type={params.input_type} --output_dir_bowtie={params.output_dir_bowtie} --output_dir_profile={params.output_dir_profile} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"python /project/src/metagenpipe.py run-metaphlan --input_type={params.input_type} --output_dir_bowtie={params.output_dir_bowtie} --output_dir_profile={params.output_dir_profile} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"python /project/src/metagenpipe.py metaphlan-report --output_dir={params.output_report} --ext={params.ext} {output.metaphlan_profiles} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
-
+		
 #rule export:
