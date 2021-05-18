@@ -10,6 +10,8 @@ import multiprocessing
 from datetime import datetime
 from pathlib import Path
 import re
+import time
+import shutil
 
 def check_make_output_dir( output_dir ):
     '''
@@ -24,6 +26,23 @@ def check_external_program_install( external_program ):
     exitcode = subprocess.getstatusoutput( external_program )[0]
     assert( exitcode!=127 ), f"Could not verify {external_program}! Make sure you have the program installed!\nExitcode: {exitcode}"
 
+
+def time_func(func, msg, *args): 
+    '''
+    function which prints the wall time it takes to execute the given command
+    '''
+    start_time = time.time()
+    func(*args)
+    end_time = time.time()
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: {msg} took this long to run: {end_time-start_time} seconds")
+
+def extract_all( archive ):
+    '''
+    Unpack an archive in the same directory of the located archive
+    '''
+    extract_path=os.path.dirname(os.path.realpath(archive))
+    shutil.unpack_archive(archive, extract_path)
+
 def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_subsampled/"), two_pass_mode=False, rng_seed=100, add_file_tag=False  ):
     '''
     Make a system call to seqtk
@@ -34,6 +53,14 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
     check_make_output_dir( output_dir )
     ## Get base filename
     root, ext = os.path.splitext( fastq_file )
+    while ext in ['.gz', '.tar']:
+        root, ext = os.path.splitext( root )
+    ## Check if file is an archive
+    fastq_archive=False
+    if ".gz" in fastq_file:
+        fastq_archive=True
+        time_func( extract_all, f"Unpacking {fastq_file}", fastq_file )
+        fastq_file = os.path.dirname(os.path.realpath(fastq_file)) + "/" + os.path.basename(root) + ".fastq"
     ## Generate subsampled filename to write to
     fastq_subsampled_file = os.path.basename(root) + "_seqt.subsampled"
     ## Add file tag denoting subsampled file with x seed and n fraction
@@ -58,7 +85,9 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Process has finished with return code: {return_code}" )
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Subsampled file written to {fastq_subsampled_file}" )
             break
-
+    if fastq_archive:
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Removing untarred cached fastq file: {fastq_file}" )
+        os.remove( fastq_file )
 def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs ):
     '''
     Make a system call to kneaddata
