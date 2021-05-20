@@ -96,6 +96,16 @@ def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs 
     check_external_program_install( "kneaddata" )
     ## Check to see if output directory exists, otherwise create it
     check_make_output_dir( output_dir )
+    ## Get base filename
+    root, ext = os.path.splitext( fastq_file )
+    while ext in ['.gz', '.tar']:
+        root, ext = os.path.splitext( root )
+    ## Check if file is an archive
+    fastq_archive=False
+    if ".gz" in fastq_file:
+        fastq_archive=True
+        time_func( extract_all, f"Unpacking {fastq_file}", fastq_file )
+        fastq_file = os.path.dirname(os.path.realpath(fastq_file)) + "/" + os.path.basename(root) + ".fastq"
     ## Generate list command
     shell_cmd_list = ['kneaddata', '--input']
     shell_cmd_list.append( fastq_file )
@@ -115,6 +125,9 @@ def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs 
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Process has finished with return code: {return_code}" )
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: kneaddata results written to {output_dir,}" )
             break
+    if fastq_archive:
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Removing untarred cached fastq file: {fastq_file}" )
+        os.remove( fastq_file )
 
 def metaphlan_call( input_file, input_type, output_dir_bowtie, output_dir_profile, nthreads ):
     """
