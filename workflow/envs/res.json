@@ -1,0 +1,10 @@
+{
+    "__default__": {
+        "account": "rrg-hroest",
+        "cpus-per-task": "1",
+        "mem-per-cpu": 16384,
+        "job-name": "JOBNAME.{rule}",
+        "output": "logs/cluster/{rule}.{wildcard}.out",
+        "error": "logs/cluster/{rule}.{wildcard}.err"
+    }
+}

@@ -44,6 +44,8 @@ conda install pytorch -y
 conda install -c anaconda beautifulsoup4 -y
 conda install lxml -y
 conda install -c bioconda seqtk -y
+conda install -c conda-forge mamba -y
+conda install -c conda-forge bioconda::snakemake -y
 # metaphlan + kneaddata install databases
 mkdir /databases
 metaphlan --install --index mpa_v30_CHOCOPhlAn_201901 --bowtie2db /databases/metaphlan/
