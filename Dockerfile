@@ -14,5 +14,4 @@ RUN rm -rf /src/setup.sh
 COPY bin/setup.sh /src/
 RUN chmod +x /src/setup.sh
 RUN /src/setup.sh
-RUN conda activate microbiome
 
