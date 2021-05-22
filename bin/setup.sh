@@ -56,6 +56,8 @@ conda install -c conda-forge bioconda::snakemake -y
 mkdir /databases
 metaphlan --install --index mpa_v30_CHOCOPhlAn_201901 --bowtie2db /databases/metaphlan/
 humann_databases --download chocophlan full /databases/humann --update-config yes
+humann_databases --download uniref uniref90_diamond /databases/humann --update-config yes
+humann_databases --download utility_mapping full /path/to/databases --update-config yes
 kneaddata_database --download human_genome bowtie2 /databases/kneaddata_human_bowtie2
 
 conda deactivate
