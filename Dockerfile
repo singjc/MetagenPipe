@@ -14,4 +14,7 @@ RUN rm -rf /src/setup.sh
 COPY bin/setup.sh /src/
 RUN chmod +x /src/setup.sh
 RUN /src/setup.sh
-
+RUN rm -rf /src/setup_centrifuge.sh
+COPY bin/setup_centrifuge.sh /src/
+RUN chmod +x /src/setup_centrifuge.sh
+RUN /src/setup_centrifuge.sh
