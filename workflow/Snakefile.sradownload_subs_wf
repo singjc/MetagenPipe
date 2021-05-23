@@ -14,8 +14,8 @@ rule sra_download:
     shell:
         "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
         "echo \"INFO: Getting accessions...\" &>> {log} && "
-        """echo \"INFO: Downloading $(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n+2 | sort | wc -l) accessions...\"  &>> {log} &&"""
-        """accessions=$(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail 5 | sort)  && """
+        """echo \"INFO: Downloading $(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n 2 | sort | wc -l) accessions...\"  &>> {log} &&"""
+        """accessions=$(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n 2 | sort)  && """
         #"vdb-config --interactive &&"
         "python /project/src/SRADownLoad.py -E $accessions -d {params.output_dir} &>> {log} && "
         "end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
