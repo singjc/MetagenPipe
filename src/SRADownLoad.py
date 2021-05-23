@@ -106,7 +106,7 @@ def RunAll(expt_acc_list, download_dir):
         run_dict = QuerySRA(expt_acc)
         run_df = pd.DataFrame(run_dict)
         if m > 0:
-            all_runs_df.append(run_df.copy(deep=True))
+            all_runs_df = all_runs_df.append(run_df.copy(deep=True))
         else:
             all_runs_df = run_df.copy(deep=True)
             m += 1
