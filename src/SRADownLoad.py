@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import argparse
 import re
+import gc
 
 ### Functions to download SRA data given experiment accessions
 ### Can be used as a command line tool or
@@ -105,12 +106,15 @@ def RunAll(expt_acc_list, download_dir):
         run_dict = QuerySRA(expt_acc)
         run_df = pd.DataFrame(run_dict)
         if m > 0:
-            all_runs_df.append(run_df.copy())
+            all_runs_df.append(run_df.copy(deep=True))
         else:
-            all_runs_df = run_df.copy()
+            all_runs_df = run_df.copy(deep=True)
             m += 1
         for run_acc in run_dict['RunID']:
             DownloadRun(run_acc, download_dir)
+        del run_df
+        del run_dict
+        gc.collect()
 
     all_runs_df.to_csv(os.path.join(download_dir, 'all_runs.csv'))
 
