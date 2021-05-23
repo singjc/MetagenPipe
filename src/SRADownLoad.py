@@ -85,9 +85,9 @@ def DownloadRun(run_acc, download_dir):
         assert code1 == 0
         assert rm_code == 0
     except:
-        msg = 'prefetch exited with code ' + code0
-        msg = msg + '; fastq-dump exited with code ' + code1
-        msg = msg + '; rm -rf exited with code ' + rm_code
+        msg = 'prefetch exited with code ' + str(code0)
+        msg = msg + '; fastq-dump exited with code ' + str(code1)
+        msg = msg + '; rm -rf exited with code ' + str(rm_code)
         raise Exception(msg)
     finally:
         os.chdir(cwd)
