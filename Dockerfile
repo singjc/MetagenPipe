@@ -14,7 +14,10 @@ RUN rm -rf /src/setup.sh
 COPY bin/setup.sh /src/
 RUN chmod +x /src/setup.sh
 RUN /src/setup.sh
-RUN rm -rf /src/setup_centrifuge.sh
-COPY bin/setup_centrifuge.sh /src/
-RUN chmod +x /src/setup_centrifuge.sh
-RUN /src/setup_centrifuge.sh
+RUN apt-get install -y unzip                                                                                            
+RUN apt-get install -y make                                                                                             
+RUN apt-get install -y g++                                                                                              
+RUN git clone https://github.com/DerrickWood/kraken2
+RUN mv kraken2 /src/
+ENV PATH="$PATH:/src/kraken2"
+RUN cd /src/kraken2/; install_kraken2.sh ./
