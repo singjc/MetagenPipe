@@ -4,8 +4,6 @@ set -e
 #apt-get install wget
 # inetall libtbb2, bowtie2 depends on this
 apt-get install libtbb2
-# install java
-dpkg -i /misc_files/jdk-15.0.2_linux-x64_bin.deb
 # install sra toolkit
 wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.10.9/sratoolkit.2.10.9-ubuntu64.tar.gz
 tar -xvzf sratoolkit.2.10.9-ubuntu64.tar.gz
@@ -29,6 +27,13 @@ conda install  -y -c bioconda python=3.7 metaphlan
 conda install -y -c bioconda bioinfokit
 # installs kneaddata for preprocessing
 conda install -c bioconda kneaddata
+# installs humann2 for pan-genome profiling
+conda install humann -c biobakery -y
+## installs kraken2
+#git clone https://github.com/DerrickWood/kraken2
+#mv kraken2 /src/kraken2
+#bash /src/kraken2/install_kraken2.sh /src/kraken2
+#cp /src/kraken2/kraken2{,-build,-inspect} $HOME/bin
 # other useful packages
 conda install numpy -y
 conda install scipy -y
@@ -46,9 +51,15 @@ conda install lxml -y
 conda install -c bioconda seqtk -y
 conda install -c conda-forge mamba -y
 conda install -c conda-forge bioconda::snakemake -y
-# metaphlan + kneaddata install databases
-mkdir /databases
-metaphlan --install --index mpa_v30_CHOCOPhlAn_201901 --bowtie2db /databases/metaphlan/
-kneaddata_database --download human_genome bowtie2 /databases/kneaddata_human_bowtie2
+
+# metaphlan, humann2, + kneaddata install databases
+# mkdir /databases
+# metaphlan --install --index mpa_v30_CHOCOPhlAn_201901 --bowtie2db /databases/metaphlan/
+# humann_databases --download chocophlan full /databases/humann --update-config yes
+# humann_databases --download uniref uniref90_diamond /databases/humann --update-config yes
+# humann_databases --download utility_mapping full /databases/humann --update-config yes
+# kneaddata_database --download human_genome bowtie2 /databases/kneaddata_human_bowtie2
+
 conda deactivate
+# kraken2 database
 

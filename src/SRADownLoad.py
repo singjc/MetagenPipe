@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import argparse
 import re
+import gc
 
 ### Functions to download SRA data given experiment accessions
 ### Can be used as a command line tool or
@@ -79,9 +80,14 @@ def DownloadRun(run_acc, download_dir):
         os.chdir(download_dir)
         code0 = os.system('prefetch ' + run_acc)
         code1 = os.system('fastq-dump ' + run_acc)
+        rm_code = os.system('rm -rf ' + run_acc)
+        assert code0 == 0
+        assert code1 == 0
+        assert rm_code == 0
     except:
-        msg = 'prefetch exited with code ' + code0
-        msg = msg + '; fastq-dump exited with code ' + code1
+        msg = 'prefetch exited with code ' + str(code0)
+        msg = msg + '; fastq-dump exited with code ' + str(code1)
+        msg = msg + '; rm -rf exited with code ' + str(rm_code)
         raise Exception(msg)
     finally:
         os.chdir(cwd)
@@ -100,12 +106,15 @@ def RunAll(expt_acc_list, download_dir):
         run_dict = QuerySRA(expt_acc)
         run_df = pd.DataFrame(run_dict)
         if m > 0:
-            all_runs_df.append(run_df.copy())
+            all_runs_df = all_runs_df.append(run_df.copy(deep=True))
         else:
-            all_runs_df = run_df.copy()
+            all_runs_df = run_df.copy(deep=True)
             m += 1
         for run_acc in run_dict['RunID']:
             DownloadRun(run_acc, download_dir)
+        del run_df
+        del run_dict
+        gc.collect()
 
     all_runs_df.to_csv(os.path.join(download_dir, 'all_runs.csv'))
 
