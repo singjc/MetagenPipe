@@ -41,6 +41,7 @@ def QuerySRA(expt_acc):
     efetch_soup = BeautifulSoup(efetch_req.text, "xml")
     # get runs
     run_set = efetch_soup.RUN_SET
+    print(run_set)
     run_tags = run_set.find_all('RUN')
     if len(run_tags) < 1:
         raise ValueError('expect 1 or more runs associated with accession')
