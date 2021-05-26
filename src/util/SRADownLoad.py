@@ -109,7 +109,11 @@ def RunAll(expt_acc_list, download_dir, extra_args=None):
     m = 0
     for expt_acc in expt_acc_list:
         click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Getting data for experiment accession: {expt_acc}" )
-        run_dict = QuerySRA(expt_acc)
+        try:
+            run_dict = QuerySRA(expt_acc)
+        except:
+            click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: QuerySRA failed for experiment accession: {expt_acc}" )
+            pass
         run_df = pd.DataFrame(run_dict)
         if m > 0:
             all_runs_df.append(run_df.copy())
