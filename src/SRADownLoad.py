@@ -6,6 +6,7 @@ import argparse
 import re
 import gc
 import time
+from warnings import warn
 
 ### Functions to download SRA data given experiment accessions
 ### Can be used as a command line tool or
@@ -95,6 +96,19 @@ def DownloadRun(run_acc, download_dir):
     finally:
         os.chdir(cwd)
 
+def RemoveFastq(fastq_path):
+    """
+    Remove a fastq file
+    :param fastq_path:
+    :return:
+    """
+    rm_fastq_cmd = 'rm ' + fastq_path
+    try:
+        print('removing ' + fastq_path)
+        rm_fastq_code = os.system(rm_fastq_cmd)
+        assert rm_fastq_code == 0
+    except:
+        raise ValueError(rm_fastq_cmd + ' had exit status ' + str(rm_fastq_code))
 
 def RunAll(expt_acc_list, download_dir, overwrite=False):
     """
@@ -118,21 +132,23 @@ def RunAll(expt_acc_list, download_dir, overwrite=False):
             do_download = True
             fastq_file = run_acc + '.fastq'
             fastq_path = os.path.join(download_dir, fastq_file)
+
             if os.path.exists(fastq_path):
                 if overwrite:
-                    try:
-                        print('removing ' + fastq_path)
-                        rm_fastq_cmd = 'rm ' + fastq_path
-                        rm_fastq_code = os.system(rm_fastq_cmd)
-                        assert rm_fastq_code == 0
-                    except:
-                        raise ValueError(rm_fastq_cmd + ' had exit status ' + str(rm_fastq_code))
+                    RemoveFastq(fastq_path)
                 else:
                     print(fastq_path + ' exists, and overwrite specified as False, skipping')
                     do_download = False
 
             if do_download:
-                DownloadRun(run_acc, download_dir)
+                try:
+                    DownloadRun(run_acc, download_dir)
+                except:
+                    msg_warn = 'fastq download exited with nonzero status, removing file'
+                    warn(msg_warn)
+                    if os.path.exists(fastq_path):
+                        RemoveFastq(fastq_path)
+                    raise ValueError('nonzero exit status for DownloadRun commands')
 
         del run_df
         del run_dict
