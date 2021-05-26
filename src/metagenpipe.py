@@ -122,7 +122,7 @@ def run_kraken2( inp_files, db_use, output_dir, nthreads ):
 
     for f in inp_files:
         base_name = os.path.basename(f)
-        root = re.sub('\\.[A-z]*', '', base_name)
+        root = re.sub('\\.[A-z]*$', '', base_name)
         read_file_output = os.path.join(output_dir, root + '_read_output.txt')
         freq_file_output = os.path.join(output_dir, root + '_freq_output.txt')
         exit_code = kraken2_call(f, db_use=db_use, reads_file=read_file_output, freq_file=freq_file_output, nthreads=nthreads)

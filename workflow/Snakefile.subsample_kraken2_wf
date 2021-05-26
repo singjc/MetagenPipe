@@ -1,10 +1,10 @@
-#run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
-run_ids, = "/project/data/raw/SRA/ERR2017411.fastq"
+# run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+run_ids = "ERR2017411".split()
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
 
 rule all:
 	input:
-		"metaphlan.done"
+		"kraken2.done"
 
 rule subsample_fastq:
 	input:
@@ -35,7 +35,7 @@ rule kneaddata:
 		#check=temp(touch("kneaddata.done")),
 		kneaded_fastq = expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)
 	params:
-		reference_db="/project/data/raw/kneaddata_db/kneaddata_human_bowtie2/hg37dec_v0.1.4.bt2",
+		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir="results/kraken2_5M/kneadeddata/",
 		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
 		nthreads=6
@@ -53,12 +53,12 @@ rule kneaddata:
 
 rule kraken2:
 	input:
-		#fastq = rules.kneaddata.output.kneaded_fastq,
-		fastq = expand("results/kraken2_5M/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids)
+		fastq = rules.kneaddata.output.kneaded_fastq,
+		#fastq = expand("results/kraken2_5M/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)
 	output:
 		check=temp(touch("kraken2.done")),
-		read_files = expand("results/kraken2_5M/kraken2_profiles/{run}_seqt.subsampled_kneaddata.trimmed_read_output.txt", run=run_ids)
-		freq_files = expand("results/kraken2_5M/kraken2_profiles/{run}_seqt.subsampled_kneaddata.trimmed_freq_output.txt", run=run_ids)
+		read_files = expand("results/kraken2_5M/kraken2/{run}_seqt.subsampled_kneaddata.trimmed_read_output.txt", run=run_ids),
+		freq_files = expand("results/kraken2_5M/kraken2/{run}_seqt.subsampled_kneaddata.trimmed_freq_output.txt", run=run_ids)
 	params:
 		input_type="fastq",
 		output_dir="results/kraken2_5M/kraken2",
@@ -70,7 +70,7 @@ rule kraken2:
 		"logs/kraken2.log"
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-        "python /project/src/metagenpipe.py run-kraken2 --db_name={params.reference_db} --output_dir={params.output_dir} --nthreads{params.nthreads} {input.fastq} &>> {log} &&"
+        "python /project/src/metagenpipe.py run-kraken2 --db_use={params.reference_db} --output_dir={params.output_dir} --nthreads {params.nthreads} {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
