@@ -35,7 +35,7 @@ def QuerySRA(expt_acc):
     if not len(esearch_ids) == 1:
         raise ValueError('unhandled response, expect only 1 ID associated with accession')
     esearch_id_use = esearch_soup.Id.contents[0]
-    print(esearch_id_use)
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: HTML ID Tag: {esearch_id_use}" )
     efetch_req = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use)
     efetch_soup = BeautifulSoup(efetch_req.text, "xml")
     # get runs
@@ -105,7 +105,15 @@ def RunAll(expt_acc_list, download_dir, extra_args=None):
     """
     m = 0
     for expt_acc in expt_acc_list:
-        print(expt_acc)
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Getting data for experiment accession: {expt_acc}" )
+        # Get files in download dir to check for files already present in directory
+        _, _, filenames = next(os.walk(download_dir))
+        experiment_accession_fastq_files_bool = [bool(re.search(expt_acc+"(_[12])?.fastq(.tar)?(.gz)?", i)) for i in filenames]
+        if os.path.exists(download_dir + os.path.sep + expt_acc) and any(experiment_accession_fastq_files_bool):
+            # If a folder with accession id already exists in download_dir, skip this accession, to save time on restarting from failed downloads
+            existing_fastq_files = [file for file, bool in zip(filenames, experiment_accession_fastq_files_bool) if bool]
+            click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Skipping experiment accession: {expt_acc}.\nThere already seems to be data for this in {download_dir}.\nThere are {len(existing_fastq_files)} existing fastq files found.\n{str(existing_fastq_files)}" )
+            pass
         run_dict = QuerySRA(expt_acc)
         run_df = pd.DataFrame(run_dict)
         if m > 0:
