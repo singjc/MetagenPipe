@@ -118,12 +118,14 @@ def RunAll(expt_acc_list, download_dir, overwrite=False):
             if os.path.exists(fastq_path):
                 if overwrite:
                     try:
+                        print('removing ' + fastq_path)
                         rm_fastq_cmd = 'rm ' + fastq_path
                         rm_fastq_code = os.system(rm_fastq_cmd)
                         assert rm_fastq_code == 0
                     except:
                         raise ValueError(rm_fastq_cmd + ' had exit status ' + str(rm_fastq_code))
                 else:
+                    print(fastq_path + ' exists, and overwrite specified as False, skipping')
                     do_download = False
 
             if do_download:
