@@ -43,7 +43,7 @@ def extract_all( archive ):
     extract_path=os.path.dirname(os.path.realpath(archive))
     shutil.unpack_archive(archive, extract_path)
 
-def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_subsampled/"), two_pass_mode=False, rng_seed=100, add_file_tag=False  ):
+def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_subsampled/"), two_pass_mode=False, rng_seed=100, add_file_tag=False, remove_untarred_fastq=True  ):
     '''
     Make a system call to seqtk
     '''
@@ -85,10 +85,10 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Process has finished with return code: {return_code}" )
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Subsampled file written to {fastq_subsampled_file}" )
             break
-    if fastq_archive:
+    if fastq_archive and remove_untarred_fastq:
         click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Removing untarred cached fastq file: {fastq_file}" )
         os.remove( fastq_file )
-def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs ):
+def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, remove_untarred_fastq=True, extra_args=None, **kwargs ):
     '''
     Make a system call to kneaddata
     '''
@@ -115,7 +115,13 @@ def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs 
     shell_cmd_list.append( reference_db )
     shell_cmd_list.append( '--output' )
     shell_cmd_list.append( output_dir )
-    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Executing kneaddate for {fastq_file}" )
+    ## Add Extra Args 
+    if extra_args is not None:
+        for item in extra_args:
+            key, value = item.split('=')
+            shell_cmd_list.append( key )
+            shell_cmd_list.append( value )
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Executing kneaddata for {fastq_file}" )
     click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: kneaddata command: {shell_cmd_list}" )
     process = subprocess.Popen( shell_cmd_list, stdout=subprocess.PIPE )
     # Check process
@@ -125,7 +131,7 @@ def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs 
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Process has finished with return code: {return_code}" )
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: kneaddata results written to {output_dir,}" )
             break
-    if fastq_archive:
+    if fastq_archive and remove_untarred_fastq:
         click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Removing untarred cached fastq file: {fastq_file}" )
         os.remove( fastq_file )
 

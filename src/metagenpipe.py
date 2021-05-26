@@ -18,6 +18,7 @@ def cli( ctx ):
     '''
     Raw Data Processing for Microbiome Metagenomics Data
     '''
+    ctx.ensure_object(dict)
 
 # Main Subsampling with seqtk
 @cli.command()
@@ -27,8 +28,9 @@ def cli( ctx ):
 @click.option('--two_pass_mode/--no-two_pass_mode', default=False, show_default=True, help='Enable 2 pass mode')
 @click.option('--rng_seed', default=100, show_default=True, type=float, help='Random seed, remember to use the same random seed to keep pairing.')
 @click.option('--add_file_tag/--no-add_file_tag', default=False, show_default=True, help='Add a tag to subsampled files, denoting subsampled file using x seed at n fraction.')
+@click.option('--remove_untarred_fastq/--no-remove_untarred_fastq', default=True, show_default=True, help='Remove untarred fastq file, if a tarred fastq file was used.')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
-def run_seqtk( fastq_files, subsample_fraction, output_dir, two_pass_mode, rng_seed, add_file_tag, nthreads ):
+def run_seqtk( fastq_files, subsample_fraction, output_dir, two_pass_mode, rng_seed, add_file_tag, remove_untarred_fastq, nthreads ):
     '''
     Main function call to subsample fastq files using seqtk
     '''
@@ -42,30 +44,32 @@ def run_seqtk( fastq_files, subsample_fraction, output_dir, two_pass_mode, rng_s
     two_pass_mode_pool = [two_pass_mode] * len(fastq_files)
     rng_seed_pool = [rng_seed] * len(fastq_files)
     add_file_tag_pool = [add_file_tag] * len(fastq_files)
+    remove_untarred_fastq_pool = [remove_untarred_fastq] * len(fastq_files)
     # Initiate a pool with nthreads for parallel processing
     pool = multiprocessing.Pool( nthreads )
-    pool.starmap( seqtk_call, zip(fastq_files, subsample_fraction_pool, output_dir_pool, two_pass_mode_pool, rng_seed_pool, add_file_tag_pool) )
+    pool.starmap( seqtk_call, zip(fastq_files, subsample_fraction_pool, output_dir_pool, two_pass_mode_pool, rng_seed_pool, add_file_tag_pool, remove_untarred_fastq_pool) )
     pool.close()
     pool.join()
 
 # Main Data Kneading with kneaddata
-@cli.command(context_settings=dict(
+@cli.command(name='run-kneaddata', context_settings=dict(
     ignore_unknown_options=True,
-    allow_extra_args=True,
+    allow_extra_args=True
 ))
 @click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
-@click.option('--reference_db', type=click.Path(exists=True), help='Reference Datanase file.')
+@click.option('--reference_db', type=click.Path(exists=True), help='Reference Database file.')
 @click.option('--output_dir', default=(os.getcwd()+"/kneadeddata/"), show_default=True, type=str, help='Directory to store results.')
-@click.option('--trimmomatic', default=(glob.glob("/root/anaconda/envs/**/trimmomatic-*/", recursive=True)), show_default=True, type=str, help='Directory to store results.')
+@click.option('--trimmomatic', default=(glob.glob("/root/anaconda/envs/**/trimmomatic-*/", recursive=True)[0]), show_default=True, type=str, help='Directory to store results.')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+@click.option('--remove_untarred_fastq/--no-remove_untarred_fastq', default=True, show_default=True, help='Remove untarred fastq file, if a tarred fastq file was used.')
+@click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to kneaddata, encapsulated as a string. i.e. \"--q=phred64 --trimmomatic-options=SLIDINGWINDOW:4:20 --trimmomatic-options=MINLEN:50\"')
 @click.pass_context
-def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthreads ):
+def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthreads, remove_untarred_fastq, extra_args ):
     '''
     Main function call to process the data with kneaddata
     '''
-    # Handle additional args TODO: Still not working... extra args are not being passed to the sub command for some reason
-    extra_args = dict([item.strip('--').split('=') for item in ctx.args])
-    # print( extra_args )
+    if extra_args is not None:
+        extra_args = extra_args.split(" ")
     if len(fastq_files) < 1:
         raise click.ClickException("At least one fastq file needs to be provided.")
     if not os.path.exists( output_dir ):
@@ -75,9 +79,11 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthr
     reference_db_pool = [reference_db] * len(fastq_files)
     output_dir_pool = [output_dir] * len(fastq_files)
     trimmomatic_pool = [trimmomatic] * len(fastq_files)
+    remove_untarred_fastq_pool = [remove_untarred_fastq] * len(fastq_files)
+    extra_args_pool = [extra_args] * len(fastq_files)
     # Initiate a pool with nthreads for parallel processing
     pool = multiprocessing.Pool( nthreads )
-    pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool, trimmomatic_pool) )
+    pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool, trimmomatic_pool, remove_untarred_fastq_pool, extra_args_pool) )
     pool.close()
     pool.join()
 
@@ -155,4 +161,4 @@ def metaphlan_report( inp_files, output_dir, ext ):
     save_report(inp_files, output_dir, ext)
     
 if __name__ == '__main__':
-    cli()
+    cli(obj={})
