@@ -39,10 +39,10 @@ def QuerySRA(expt_acc):
     click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: GET URL: {'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use}" )
     efetch_req = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use)
     efetch_soup = BeautifulSoup(efetch_req.text, "xml")
-    print(efetch_soup)
+    # print(efetch_soup)
     # get runs
     run_set = efetch_soup.RUN_SET
-    print(run_set)
+    # print(run_set)
     run_tags = run_set.find_all('RUN')
     if len(run_tags) < 1:
         raise ValueError('expect 1 or more runs associated with accession')
