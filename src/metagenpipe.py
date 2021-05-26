@@ -62,7 +62,7 @@ def run_seqtk( fastq_files, subsample_fraction, output_dir, two_pass_mode, rng_s
 @click.option('--trimmomatic', default=(glob.glob("/root/anaconda/envs/**/trimmomatic-*/", recursive=True)[0]), show_default=True, type=str, help='Directory to store results.')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
 @click.option('--remove_untarred_fastq/--no-remove_untarred_fastq', default=True, show_default=True, help='Remove untarred fastq file, if a tarred fastq file was used.')
-@click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to kneaddata, encapsulated as a string. i.e. \"--q=phred64 --trimmomatic-options=SLIDINGWINDOW:4:20 --trimmomatic-options=MINLEN:50\"')
+@click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to kneaddata, encapsulated as a string. i.e. \"-q=phred64 --trimmomatic-options=SLIDINGWINDOW:4:20 --trimmomatic-options=MINLEN:50\"')
 @click.pass_context
 def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthreads, remove_untarred_fastq, extra_args ):
     '''
