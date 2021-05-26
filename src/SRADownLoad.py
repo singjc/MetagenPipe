@@ -93,11 +93,12 @@ def DownloadRun(run_acc, download_dir):
         os.chdir(cwd)
 
 
-def RunAll(expt_acc_list, download_dir):
+def RunAll(expt_acc_list, download_dir, overwrite=False):
     """
 
     :param expt_acc_list: list of experiment accessions
     :param download_dir: directory to store files
+    :param overwrite: overwrite previous fastq file if exists
     :return:
     """
     m = 0
@@ -111,7 +112,23 @@ def RunAll(expt_acc_list, download_dir):
             all_runs_df = run_df.copy(deep=True)
             m += 1
         for run_acc in run_dict['RunID']:
-            DownloadRun(run_acc, download_dir)
+            do_download = True
+            fastq_file = run_acc + '.fastq'
+            fastq_path = os.path.join(download_dir, fastq_file)
+            if os.path.exists(fastq_path):
+                if overwrite:
+                    try:
+                        rm_fastq_cmd = 'rm ' + fastq_path
+                        rm_fastq_code = os.system(rm_fastq_cmd)
+                        assert rm_fastq_code == 0
+                    except:
+                        raise ValueError(rm_fastq_cmd + ' had exit status ' + str(rm_fastq_code))
+                else:
+                    do_download = False
+
+            if do_download:
+                DownloadRun(run_acc, download_dir)
+
         del run_df
         del run_dict
         gc.collect()
@@ -122,7 +139,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-E", "--all_expt_accs", nargs="*")
     parser.add_argument("-d", "--download_dir", nargs=1)
+    parser.add_argument("-X", "--overwrite", nargs=1)
     args = parser.parse_args()
     all_expt_accs = args.all_expt_accs
     download_dir = args.download_dir[0]
-    RunAll(all_expt_accs, download_dir)
+    overwrite = args.overwrite[0]
+    RunAll(all_expt_accs, download_dir, overwrite)
