@@ -141,9 +141,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-E", "--all_expt_accs", nargs="*")
     parser.add_argument("-d", "--download_dir", nargs=1, type=str)
-    parser.add_argument("-X", "--overwrite", nargs=1, type=bool)
+    parser.add_argument("-X", "--overwrite", nargs=1, type=str, default='False')
     args = parser.parse_args()
     all_expt_accs = args.all_expt_accs
     download_dir = args.download_dir[0]
     overwrite = args.overwrite[0]
+    if overwrite == 'True':
+        overwrite = True
+    elif overwrite == 'False':
+        overwrite = False
+    else:
+        raise ValueError('overwrite must be specified as True or False')
+
     RunAll(all_expt_accs, download_dir, overwrite)
