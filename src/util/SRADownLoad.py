@@ -4,6 +4,8 @@ import os
 import pandas as pd
 import argparse
 import re
+import click
+from datetime import datetime
 
 ### Functions to download SRA data given experiment accessions
 ### Can be used as a command line tool or
@@ -84,6 +86,7 @@ def DownloadRun(run_acc, download_dir, extra_args=None):
         if extra_args is not None:
             fastq_dump_call + " " + extra_args
         fastq_dump_call + " " + run_acc
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: fastq-dump call: {fastq_dump_call}" )
         code1 = os.system( fastq_dump_call )
     except:
         msg = 'prefetch exited with code ' + code0
