@@ -138,8 +138,8 @@ def RunAll(expt_acc_list, download_dir, overwrite=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-E", "--all_expt_accs", nargs="*")
-    parser.add_argument("-d", "--download_dir", nargs=1)
-    parser.add_argument("-X", "--overwrite", nargs=1)
+    parser.add_argument("-d", "--download_dir", nargs=1, type=str)
+    parser.add_argument("-X", "--overwrite", nargs=1, type=bool)
     args = parser.parse_args()
     all_expt_accs = args.all_expt_accs
     download_dir = args.download_dir[0]
