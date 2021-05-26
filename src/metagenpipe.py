@@ -23,7 +23,7 @@ def cli( ctx ):
 
 # Main SRA Downloader
 @cli.command()
-@click.argument('all_expt_accs', nargs=-1, type=click.Path(exists=True))
+@click.argument('all_expt_accs', nargs=-1, type=click.STRING)
 @click.option('--download_dir', default=(os.getcwd()+"/SRA/"), show_default=True, type=str, help='Directory to store data.')
 @click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to fastq_dump, encapsulated as a string. i.e. \"-I --gzip --split-files\"')
 def sra_downloader( all_expt_accs, download_dir, extra_args ):
