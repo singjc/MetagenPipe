@@ -110,7 +110,7 @@ def RemoveFastq(fastq_path):
     except:
         raise ValueError(rm_fastq_cmd + ' had exit status ' + str(rm_fastq_code))
 
-def RunAll(expt_acc_list, download_dir, overwrite=False):
+def RunAll(expt_acc_list, download_dir, overwrite=False, skip=True):
     """
 
     :param expt_acc_list: list of experiment accessions
@@ -144,11 +144,14 @@ def RunAll(expt_acc_list, download_dir, overwrite=False):
                 try:
                     DownloadRun(run_acc, download_dir)
                 except:
-                    msg_warn = 'fastq download exited with nonzero status, removing file'
-                    warn(msg_warn)
+                    warn('fastq download exited with nonzero status, removing file')
                     if os.path.exists(fastq_path):
                         RemoveFastq(fastq_path)
-                    raise ValueError('nonzero exit status for DownloadRun commands')
+                    if skip:
+                        warn('failure to download, skipping to next accession in loop')
+                        continue
+                    else:
+                        raise ValueError('nonzero exit status for DownloadRun commands')
 
         del run_df
         del run_dict
@@ -156,20 +159,27 @@ def RunAll(expt_acc_list, download_dir, overwrite=False):
 
     all_runs_df.to_csv(os.path.join(download_dir, 'all_runs.csv'))
 
+def ParseBool(x, argname):
+    if x == 'True':
+        x = True
+    elif x == 'False':
+        x = False
+    else:
+        raise ValueError(argname + ' must be specified as True or False')
+    return x
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-E", "--all_expt_accs", nargs="*")
     parser.add_argument("-d", "--download_dir", nargs=1, type=str)
     parser.add_argument("-X", "--overwrite", nargs=1, type=str, default='False')
+    parser.add_argument("-s", "--skip", nargs=1, type=str, default='True')
     args = parser.parse_args()
     all_expt_accs = args.all_expt_accs
     download_dir = args.download_dir[0]
     overwrite = args.overwrite[0]
-    if overwrite == 'True':
-        overwrite = True
-    elif overwrite == 'False':
-        overwrite = False
-    else:
-        raise ValueError('overwrite must be specified as True or False')
+    skip = args.skip[0]
+    overwrite = ParseBool(overwrite, 'overwrite')
+    skip = ParseBool(skip, 'skip')
 
-    RunAll(all_expt_accs, download_dir, overwrite)
+    RunAll(all_expt_accs, download_dir, overwrite, skip)
