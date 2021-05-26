@@ -36,6 +36,7 @@ def QuerySRA(expt_acc):
         raise ValueError('unhandled response, expect only 1 ID associated with accession')
     esearch_id_use = esearch_soup.Id.contents[0]
     click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: HTML ID Tag: {esearch_id_use}" )
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: GET URL: {'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use}" )
     efetch_req = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use)
     efetch_soup = BeautifulSoup(efetch_req.text, "xml")
     # get runs
@@ -124,6 +125,7 @@ def RunAll(expt_acc_list, download_dir, extra_args=None):
                 pass
             else:
                 DownloadRun(run_acc, download_dir, extra_args)
+        print()
 
     all_runs_df.to_csv(os.path.join(download_dir, 'all_runs.csv'))
 
