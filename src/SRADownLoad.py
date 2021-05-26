@@ -5,6 +5,7 @@ import pandas as pd
 import argparse
 import re
 import gc
+import time
 
 ### Functions to download SRA data given experiment accessions
 ### Can be used as a command line tool or
@@ -28,6 +29,7 @@ def QuerySRA(expt_acc):
     # setup dict for output
     return_dict = {'ExptAcc': [], 'Alias': [], 'RunID': []}
     # run http get request
+    time.sleep(3)
     esearch_req = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term=' + expt_acc)
     esearch_soup = BeautifulSoup(esearch_req.text, "xml")
     esearch_ids = esearch_soup.find_all('Id')
@@ -35,6 +37,7 @@ def QuerySRA(expt_acc):
         raise ValueError('unhandled response, expect only 1 ID associated with accession')
     esearch_id_use = esearch_soup.Id.contents[0]
     print(esearch_id_use)
+    time.sleep(3)
     efetch_req = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use)
     efetch_soup = BeautifulSoup(efetch_req.text, "xml")
     # get runs
