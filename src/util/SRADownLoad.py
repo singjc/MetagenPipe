@@ -117,6 +117,7 @@ def RunAll(expt_acc_list, download_dir, extra_args=None):
             # Get files in download dir to check for files already present in directory
             _, _, filenames = next(os.walk(download_dir))
             print(filenames)
+            print(run_dict['RunID'])
             experiment_accession_fastq_files_bool = [bool(re.search(run_dict['RunID']+"(_[12])?.fastq(.tar)?(.gz)?", i)) for i in filenames]
             print(os.path.exists(download_dir + os.path.sep + run_dict['RunID']))
             print(any(experiment_accession_fastq_files_bool))
