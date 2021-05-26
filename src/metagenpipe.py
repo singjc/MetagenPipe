@@ -8,6 +8,7 @@ import multiprocessing
 
 from preprocessing.data_processing import seqtk_call, kneaddata_call, metaphlan_call, parse_metaphlan_file
 from preprocessing.report import save_report
+from util.SRADownLoad import RunAll
 
 
 # Main Command Line Interface
@@ -19,6 +20,17 @@ def cli( ctx ):
     Raw Data Processing for Microbiome Metagenomics Data
     '''
     ctx.ensure_object(dict)
+
+# Main SRA Downloader
+@cli.command()
+@click.argument('all_expt_accs', nargs=-1, type=click.Path(exists=True))
+@click.option('--download_dir', default=(os.getcwd()+"/SRA/"), show_default=True, type=str, help='Directory to store data.')
+@click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to fastq_dump, encapsulated as a string. i.e. \"-I --gzip --split-files\"')
+def sra_downloader( all_expt_accs, download_dir, extra_args ):
+    '''
+    Main function call to SRA Downloader
+    '''
+    RunAll(all_expt_accs, download_dir, extra_args)
 
 # Main Subsampling with seqtk
 @cli.command()
