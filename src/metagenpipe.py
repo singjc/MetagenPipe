@@ -5,6 +5,8 @@ import sys
 import os
 import glob
 import multiprocessing
+import re
+from datetime import datetime
 
 from preprocessing.data_processing import seqtk_call, kneaddata_call, metaphlan_call, parse_metaphlan_file
 from preprocessing.report import save_report
@@ -75,8 +77,9 @@ def run_seqtk( fastq_files, subsample_fraction, output_dir, two_pass_mode, rng_s
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
 @click.option('--remove_untarred_fastq/--no-remove_untarred_fastq', default=True, show_default=True, help='Remove untarred fastq file, if a tarred fastq file was used.')
 @click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to kneaddata, encapsulated as a string. i.e. \"-q=phred64 --trimmomatic-options=SLIDINGWINDOW:4:20 --trimmomatic-options=MINLEN:50\"')
+@click.option('--paired_end/--no-paired_end', default=False, show_default=True, help='Paired end data?')
 @click.pass_context
-def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthreads, remove_untarred_fastq, extra_args ):
+def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthreads, remove_untarred_fastq, extra_args, paired_end ):
     '''
     Main function call to process the data with kneaddata
     '''
@@ -86,6 +89,18 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthr
         raise click.ClickException("At least one fastq file needs to be provided.")
     if not os.path.exists( output_dir ):
         os.makedirs( output_dir )
+    # Check to see if data is paired end
+    if paired_end:
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Paired end mode selected, pairing fastq files..." )
+        file_names_prefix = list(set([ re.match(r'^(\w+)_([12]).*', os.path.basename(file)).group(1) for file in list(fastq_files) ]))
+        tmp_fastq_files_pair_1 = []
+        tmp_fastq_files_pair_2 = []
+        for file_prefix in file_names_prefix:
+            file_pair = [file for file in list(fastq_files) if file_prefix in file]
+            tmp_fastq_files_pair_1.append( [ re.match(r'.*\w+_[1].*', file)[0] for file in list(file_pair) if re.match(r'.*\w+_[1].*', file) is not None ][0] )
+            tmp_fastq_files_pair_2.append( [ re.match(r'.*\w+_[2].*', file)[0] for file in list(file_pair) if re.match(r'.*\w+_[2].*', file) is not None ][0] )
+        #print(f"1: {tmp_fastq_files_pair_1}\n2: {tmp_fastq_files_pair_2}")
+        fastq_files = tmp_fastq_files_pair_1
     # Prepare args for parallel processing
     fastq_files = list(fastq_files)
     reference_db_pool = [reference_db] * len(fastq_files)
@@ -93,9 +108,11 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthr
     trimmomatic_pool = [trimmomatic] * len(fastq_files)
     remove_untarred_fastq_pool = [remove_untarred_fastq] * len(fastq_files)
     extra_args_pool = [extra_args] * len(fastq_files)
+    paired_end_pool = [paired_end] * len(fastq_files)
+    paired_end_2_fastqs_pool = tmp_fastq_files_pair_2
     # Initiate a pool with nthreads for parallel processing
     pool = multiprocessing.Pool( nthreads )
-    pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool, trimmomatic_pool, remove_untarred_fastq_pool, extra_args_pool) )
+    pool.starmap( kneaddata_call, zip(fastq_files, reference_db_pool, output_dir_pool, trimmomatic_pool, remove_untarred_fastq_pool, extra_args_pool, paired_end_pool, paired_end_2_fastqs_pool) )
     pool.close()
     pool.join()
 
