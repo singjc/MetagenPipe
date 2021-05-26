@@ -84,8 +84,8 @@ def DownloadRun(run_acc, download_dir, extra_args=None):
         fastq_dump_call = 'fastq-dump' 
         ## Add Extra Args 
         if extra_args is not None:
-            fastq_dump_call + " " + extra_args
-        fastq_dump_call + " " + run_acc
+            fastq_dump_call = fastq_dump_call + " " + extra_args
+        fastq_dump_call = fastq_dump_call + " " + run_acc
         click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: fastq-dump call: {fastq_dump_call}" )
         code1 = os.system( fastq_dump_call )
     except:
