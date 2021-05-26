@@ -65,7 +65,7 @@ def QuerySRA(expt_acc):
     return return_dict
 
 
-def DownloadRun(run_acc, download_dir):
+def DownloadRun(run_acc, download_dir, extra_args=None):
     """
     Download a run given a run accession
     :param run_acc: run accession
@@ -78,7 +78,13 @@ def DownloadRun(run_acc, download_dir):
             os.mkdir(download_dir)
         os.chdir(download_dir)
         code0 = os.system('prefetch ' + run_acc)
-        code1 = os.system('fastq-dump ' + run_acc)
+        ## Build fastq-dump system command
+        fastq_dump_call = 'fastq-dump' 
+        ## Add Extra Args 
+        if extra_args is not None:
+            fastq_dump_call + " " + extra_args
+        fastq_dump_call + " " + run_acc
+        code1 = os.system( fastq_dump_call )
     except:
         msg = 'prefetch exited with code ' + code0
         msg = msg + '; fastq-dump exited with code ' + code1
@@ -87,7 +93,7 @@ def DownloadRun(run_acc, download_dir):
         os.chdir(cwd)
 
 
-def RunAll(expt_acc_list, download_dir):
+def RunAll(expt_acc_list, download_dir, extra_args=None):
     """
 
     :param expt_acc_list: list of experiment accessions
@@ -105,7 +111,7 @@ def RunAll(expt_acc_list, download_dir):
             all_runs_df = run_df.copy()
             m += 1
         for run_acc in run_dict['RunID']:
-            DownloadRun(run_acc, download_dir)
+            DownloadRun(run_acc, download_dir, extra_args)
 
     all_runs_df.to_csv(os.path.join(download_dir, 'all_runs.csv'))
 
@@ -113,7 +119,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-E", "--all_expt_accs", nargs="*")
     parser.add_argument("-d", "--download_dir", nargs=1)
+    parser.add_argument("-x", "--extra_args", nargs=1)
     args = parser.parse_args()
     all_expt_accs = args.all_expt_accs
     download_dir = args.download_dir[0]
-    RunAll(all_expt_accs, download_dir)
+    extra_args = args.extra_args
+    RunAll(all_expt_accs, download_dir, extra_args)
