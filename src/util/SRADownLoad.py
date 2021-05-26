@@ -117,11 +117,11 @@ def RunAll(expt_acc_list, download_dir, extra_args=None):
             # Get files in download dir to check for files already present in directory
             _, _, filenames = next(os.walk(download_dir))
             print(filenames)
-            print(run_dict['RunID'])
-            experiment_accession_fastq_files_bool = [bool(re.search(run_dict['RunID']+"(_[12])?.fastq(.tar)?(.gz)?", i)) for i in filenames]
-            print(os.path.exists(download_dir + os.path.sep + run_dict['RunID']))
+            print(run_dict['RunID'][0])
+            experiment_accession_fastq_files_bool = [bool(re.search(run_dict['RunID'][0]+"(_[12])?.fastq(.tar)?(.gz)?", i)) for i in filenames]
+            print(os.path.exists(download_dir + os.path.sep + run_dict['RunID'][0]))
             print(any(experiment_accession_fastq_files_bool))
-            if (os.path.exists(download_dir + os.path.sep + run_dict['RunID']) and any(experiment_accession_fastq_files_bool)):
+            if (os.path.exists(download_dir + os.path.sep + run_dict['RunID'][0]) and any(experiment_accession_fastq_files_bool)):
                 # If a folder with accession id already exists in download_dir, skip this accession, to save time on restarting from failed downloads
                 existing_fastq_files = [file for file, bool in zip(filenames, experiment_accession_fastq_files_bool) if bool]
                 click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Skipping experiment accession {expt_acc} with RunID {run_dict['RunID']}.\nThere already seems to be data for this in {download_dir}.\nThere are {len(existing_fastq_files)} existing fastq files found.\n{str(existing_fastq_files)}" )
