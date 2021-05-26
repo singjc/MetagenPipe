@@ -207,3 +207,17 @@ def parse_metaphlan_file( input_file ):
         raise ValueError('total relative abundance ' + total_pct + ' is not 100.0')
 
     return pd_df_out
+
+def kraken2_call( input_file, db_use, reads_file, freq_file, nthreads=1 ):
+    """
+    System Call to Kraken2
+    :param input_file: fastq file
+    :param db_use: kraken2 database
+    :param reads_file: file written to in --output flag for kraken2. contains annotated reads
+    :param freq_file: file written to in --report flag for kraken2. contains taxa frequencies
+    :param n_threads: number of threads to use
+    :return: exit status for system call
+    """
+    cmd = 'kraken2 --db {0} --output {1} --report {2} --threads {3} {4}'.format(db_use, reads_file, freq_file, nthreads, input_file)
+    exit_status = os.system(cmd)
+    return exit_status

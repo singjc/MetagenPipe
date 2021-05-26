@@ -5,9 +5,11 @@ import sys
 import os
 import glob
 import multiprocessing
+import re
 
-from preprocessing.data_processing import seqtk_call, kneaddata_call, metaphlan_call, parse_metaphlan_file
+from preprocessing.data_processing import seqtk_call, kneaddata_call, metaphlan_call, parse_metaphlan_file, kraken2_call
 from preprocessing.report import save_report
+from warnings import warn
 
 
 # Main Command Line Interface
@@ -99,6 +101,33 @@ def run_metaphlan( inp_files, input_type, output_dir_bowtie, output_dir_profile,
 
     for f in inp_files:
         metaphlan_call(f, input_type, output_dir_bowtie, output_dir_profile, nthreads)
+
+
+# Main Kraken2
+
+@cli.command()
+@click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--db_use', default=None, show_default=True, type=str, help='kraken2 database to use')
+@click.option('--output_dir', default='./', show_default=True, type=str, help='output directory for files')
+@click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+def run_kraken2( inp_files, db_use, output_dir, nthreads ):
+    '''
+    Main function call to process the data with metaphlan
+    '''
+    if len(inp_files) < 1:
+        click.ClickException("At least one input file needs to be provided.")
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    for f in inp_files:
+        base_name = os.path.basename(f)
+        root = re.sub('\\.[A-z]*', '', base_name)
+        read_file_output = os.path.join(output_dir, root + '_read_output.txt')
+        freq_file_output = os.path.join(output_dir, root + '_freq_output.txt')
+        exit_code = kraken2_call(f, db_use=db_use, reads_file=read_file_output, freq_file=freq_file_output, nthreads=nthreads)
+        if not exit_code == 0:
+            warn('kraken2 returned exit code {0} for file {1}'.format(exit_code, f))
 
 
 @cli.command()
