@@ -37,7 +37,8 @@ rule kneaddata:
 		reference_db="/databases/kneaddata_human_bowtie2/hg37dec_v0.1.4.bt2",
 		output_dir="results/kneadeddata/",
 		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
-		nthreads=6
+		nthreads=6,
+		extra_args="-q=phred3 --trimmomatic-options=SLIDINGWINDOW:4:30"
 	threads: 6
 	#conda:
 		#"envs/kneaddata.yml"
@@ -45,7 +46,7 @@ rule kneaddata:
 		"logs/kneaddata.log"
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/metagenpipe.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"python /project/src/metagenpipe.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} --extra_args=\"{params.extra_args}\" {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"

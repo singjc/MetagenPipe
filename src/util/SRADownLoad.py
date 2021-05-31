@@ -70,10 +70,12 @@ def QuerySRA(expt_acc):
     return return_dict
 
 
-def DownloadRun(run_acc, download_dir):
+def DownloadRun(run_acc, download_dir, extra_args=None):
     """
     Download a run given a run accession
     :param run_acc: run accession
+    :param download_dir: download directory
+    :param extra_args: string noting extra arguments
     :return: makes system call to sra toolkit prefetch command
     """
     cwd = os.getcwd()
@@ -83,7 +85,13 @@ def DownloadRun(run_acc, download_dir):
             os.mkdir(download_dir)
         os.chdir(download_dir)
         code0 = os.system('prefetch ' + run_acc)
-        code1 = os.system('fastq-dump ' + run_acc)
+        ## Build fastq-dump system command
+        fastq_dump_call = 'fastq-dump' 
+        ## Add Extra Args (Assumed to be a string)
+        if extra_args is not None:
+            fastq_dump_call + " " + extra_args
+        fastq_dump_call + " " + run_acc
+        code1 = os.system( fastq_dump_call )
         rm_code = os.system('rm -rf ' + run_acc)
         assert code0 == 0
         assert code1 == 0
@@ -110,12 +118,16 @@ def RemoveFastq(fastq_path):
     except:
         raise ValueError(rm_fastq_cmd + ' had exit status ' + str(rm_fastq_code))
 
-def RunAll(expt_acc_list, download_dir, overwrite=False, skip=True):
+
+def RunAll(expt_acc_list, download_dir, overwrite=False, skip=True, extra_args=None):
+
     """
 
     :param expt_acc_list: list of experiment accessions
     :param download_dir: directory to store files
     :param overwrite: overwrite previous fastq file if exists
+    :param skip: Skip a download upon failure to download
+    :param extra_args: extra arguments to pass to SRAtoolkit
     :return:
     """
     m = 0
@@ -142,7 +154,7 @@ def RunAll(expt_acc_list, download_dir, overwrite=False, skip=True):
 
             if do_download:
                 try:
-                    DownloadRun(run_acc, download_dir)
+                    DownloadRun(run_acc, download_dir, extra_args)
                 except:
                     warn('fastq download exited with nonzero status, removing file')
                     if os.path.exists(fastq_path):
@@ -174,12 +186,15 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--download_dir", nargs=1, type=str)
     parser.add_argument("-X", "--overwrite", nargs=1, type=str, default='False')
     parser.add_argument("-s", "--skip", nargs=1, type=str, default='True')
+    parser.add_argument("-x", "--extra_args", nargs=1)
     args = parser.parse_args()
     all_expt_accs = args.all_expt_accs
     download_dir = args.download_dir[0]
     overwrite = args.overwrite[0]
     skip = args.skip[0]
     overwrite = ParseBool(overwrite, 'overwrite')
+    extra_args = args.extra_args[0]
     skip = ParseBool(skip, 'skip')
 
-    RunAll(all_expt_accs, download_dir, overwrite, skip)
+    RunAll(all_expt_accs, download_dir, overwrite, skip, extra_args)
+
