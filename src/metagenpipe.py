@@ -102,6 +102,8 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthr
             tmp_fastq_files_pair_2.append( [ re.match(r'.*\w+_[2].*', file)[0] for file in list(file_pair) if re.match(r'.*\w+_[2].*', file) is not None ][0] )
         #print(f"1: {tmp_fastq_files_pair_1}\n2: {tmp_fastq_files_pair_2}")
         fastq_files = tmp_fastq_files_pair_1
+    else:
+        tmp_fastq_files_pair_2 = [None] * len(fastq_files)
     # Prepare args for parallel processing
     fastq_files = list(fastq_files)
     reference_db_pool = [reference_db] * len(fastq_files)
