@@ -218,8 +218,4 @@ def metaphlan_report( inp_files, output_dir, ext ):
     save_report(inp_files, output_dir, ext)
     
 if __name__ == '__main__':
-<<<<<<< HEAD
-    cli()
-=======
     cli(obj={})
->>>>>>> master
