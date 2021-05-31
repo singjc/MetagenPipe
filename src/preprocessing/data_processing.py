@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 import re
 import time
+import gzip
 import shutil
 
 def check_make_output_dir( output_dir ):
@@ -26,31 +27,11 @@ def check_external_program_install( external_program ):
     exitcode = subprocess.getstatusoutput( external_program )[0]
     assert( exitcode!=127 ), f"Could not verify {external_program}! Make sure you have the program installed!\nExitcode: {exitcode}"
 
-
-def time_func(func, msg, *args): 
-    '''
-    function which prints the wall time it takes to execute the given command
-    '''
-    start_time = time.time()
-    func(*args)
-    end_time = time.time()
-    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: {msg} took this long to run: {end_time-start_time} seconds")
-
-def extract_all( archive ):
-    '''
-    Unpack an archive in the same directory of the located archive
-    '''
-    extract_path=os.path.dirname(os.path.realpath(archive))
-    shutil.unpack_archive(archive, extract_path)
-
-def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_subsampled/"), two_pass_mode=False, rng_seed=100, add_file_tag=False  ):
-    '''
-    Make a system call to seqtk
-    '''
-    ## Check to make sure seqtk is installed.
-    check_external_program_install( "seqtk" )
-    ## Check to see if output directory exists, otherwise create it
-    check_make_output_dir( output_dir )
+def fastq_file_process_check ( fastq_file ):
+    """
+    Check if a fastq file is archived/compressed.
+    Return path to decompressed fastq file and return logical true for decompression 
+    """
     ## Get base filename
     root, ext = os.path.splitext( fastq_file )
     while ext in ['.gz', '.tar']:
@@ -61,6 +42,48 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
         fastq_archive=True
         time_func( extract_all, f"Unpacking {fastq_file}", fastq_file )
         fastq_file = os.path.dirname(os.path.realpath(fastq_file)) + "/" + os.path.basename(root) + ".fastq"
+    return fastq_file, fastq_archive, root
+
+def time_func(func, msg, *args): 
+    '''
+    function which prints the wall time it takes to execute the given command
+    '''
+    start_time = time.time()
+    func(*args)
+    end_time = time.time()
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: {msg} took this long to run: {end_time-start_time} seconds")
+
+def gunzip_something(gzipped_file_name, work_dir):
+    "gunzip the given gzipped file"
+
+    # see warning about filename
+    filename = os.path.split(gzipped_file_name)[-1]
+    filename = re.sub(r"\.gz$", "", filename, flags=re.IGNORECASE)
+
+    with gzip.open(gzipped_file_name, 'rb') as f_in:  # <<========== extraction happens here
+        with open(os.path.join(work_dir, filename), 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+def extract_all( archive ):
+    '''
+    Unpack an archive in the same directory of the located archive
+    '''
+    extract_path=os.path.dirname(os.path.realpath(archive))
+    shutil.register_unpack_format('gz',
+                              ['.gz', ],
+                              gunzip_something)
+    shutil.unpack_archive(archive, extract_path)
+
+def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_subsampled/"), two_pass_mode=False, rng_seed=100, add_file_tag=False, remove_untarred_fastq=True  ):
+    '''
+    Make a system call to seqtk
+    '''
+    ## Check to make sure seqtk is installed.
+    check_external_program_install( "seqtk" )
+    ## Check to see if output directory exists, otherwise create it
+    check_make_output_dir( output_dir )
+    ## Check if fastq file is compressed
+    fastq_file, fastq_archive, root = fastq_file_process_check ( fastq_file )
     ## Generate subsampled filename to write to
     fastq_subsampled_file = os.path.basename(root) + "_seqt.subsampled"
     ## Add file tag denoting subsampled file with x seed and n fraction
@@ -85,10 +108,11 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Process has finished with return code: {return_code}" )
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Subsampled file written to {fastq_subsampled_file}" )
             break
-    if fastq_archive:
+    if fastq_archive and remove_untarred_fastq:
         click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Removing untarred cached fastq file: {fastq_file}" )
         os.remove( fastq_file )
-def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs ):
+
+def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, remove_untarred_fastq=True, extra_args=None, paired_end=False, paired_end_2_fastq=None, **kwargs ):
     '''
     Make a system call to kneaddata
     '''
@@ -96,26 +120,29 @@ def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs 
     check_external_program_install( "kneaddata" )
     ## Check to see if output directory exists, otherwise create it
     check_make_output_dir( output_dir )
-    ## Get base filename
-    root, ext = os.path.splitext( fastq_file )
-    while ext in ['.gz', '.tar']:
-        root, ext = os.path.splitext( root )
-    ## Check if file is an archive
-    fastq_archive=False
-    if ".gz" in fastq_file:
-        fastq_archive=True
-        time_func( extract_all, f"Unpacking {fastq_file}", fastq_file )
-        fastq_file = os.path.dirname(os.path.realpath(fastq_file)) + "/" + os.path.basename(root) + ".fastq"
+    ## Check if fastq file is compressed
+    fastq_file, fastq_archive, root = fastq_file_process_check ( fastq_file )
     ## Generate list command
     shell_cmd_list = ['kneaddata', '--input']
     shell_cmd_list.append( fastq_file )
+    if paired_end and paired_end_2_fastq is not None:
+        ## Check if fastq file is compressed
+        paired_end_2_fastq, fastq_archive, root = fastq_file_process_check ( paired_end_2_fastq )
+        shell_cmd_list.append( '--input' )
+        shell_cmd_list.append( paired_end_2_fastq )
     shell_cmd_list.append( '--trimmomatic' )
     shell_cmd_list.append( trimmomatic )
     shell_cmd_list.append( '--reference-db' )
     shell_cmd_list.append( reference_db )
     shell_cmd_list.append( '--output' )
     shell_cmd_list.append( output_dir )
-    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Executing kneaddate for {fastq_file}" )
+    ## Add Extra Args 
+    if extra_args is not None:
+        for item in extra_args:
+            key, value = item.split('=')
+            shell_cmd_list.append( key )
+            shell_cmd_list.append( value )
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Executing kneaddata for {fastq_file}" )
     click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: kneaddata command: {shell_cmd_list}" )
     process = subprocess.Popen( shell_cmd_list, stdout=subprocess.PIPE )
     # Check process
@@ -125,9 +152,12 @@ def kneaddata_call( fastq_file, reference_db, output_dir, trimmomatic, **kwargs 
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Process has finished with return code: {return_code}" )
             click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: kneaddata results written to {output_dir,}" )
             break
-    if fastq_archive:
+    if fastq_archive and remove_untarred_fastq:
         click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Removing untarred cached fastq file: {fastq_file}" )
         os.remove( fastq_file )
+        if paired_end:
+            click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Removing untarred cached fastq file: {paired_end_2_fastq}" )
+            os.remove( paired_end_2_fastq )
 
 def metaphlan_call( input_file, input_type, output_dir_bowtie, output_dir_profile, nthreads ):
     """
@@ -207,3 +237,17 @@ def parse_metaphlan_file( input_file ):
         raise ValueError('total relative abundance ' + total_pct + ' is not 100.0')
 
     return pd_df_out
+
+def kraken2_call( input_file, db_use, reads_file, freq_file, nthreads=1 ):
+    """
+    System Call to Kraken2
+    :param input_file: fastq file
+    :param db_use: kraken2 database
+    :param reads_file: file written to in --output flag for kraken2. contains annotated reads
+    :param freq_file: file written to in --report flag for kraken2. contains taxa frequencies
+    :param n_threads: number of threads to use
+    :return: exit status for system call
+    """
+    cmd = 'kraken2 --db {0} --output {1} --report {2} --threads {3} {4}'.format(db_use, reads_file, freq_file, nthreads, input_file)
+    exit_status = os.system(cmd)
+    return exit_status

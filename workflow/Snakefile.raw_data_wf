@@ -1,0 +1,55 @@
+run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+
+rule all:
+	input:
+		"metaphlan.done"
+
+rule kneaddata:
+	input:
+		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
+	output:
+		kneaded_fastq = expand("results/kneadeddata/{run}_kneaddata.fastq", run=run_ids)	
+	params:
+		reference_db="/databases/kneaddata_human_bowtie2/hg37dec_v0.1.4.bt2",
+		output_dir="results/kneadeddata/",
+		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
+		nthreads=6,
+		extra_args="-q=phred3 --trimmomatic-options=SLIDINGWINDOW:4:30"
+	threads: 6
+	#conda:
+		#"envs/kneaddata.yml"
+	log:
+		"logs/kneaddata.log"
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"python /project/src/metagenpipe.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} --extra_args={params.extra_args} {input.fastq} &>> {log} &&"
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+
+rule metaphlan:
+	input:
+		fastq = rules.kneaddata.output.kneaded_fastq,
+	output:
+		check=temp(touch("metaphlan.done")),
+		metaphlan_bowtie2out = expand("results/metaphlan_bowtie2out/{run}_kneaddata.bowtie2.bz2", run=run_ids),
+		metaphlan_profiles = expand("results/metaphlan_profiles/{run}_kneaddata_profile.txt", run=run_ids)
+	params:
+		input_type="fastq",
+		output_dir_bowtie="results/metaphlan_bowtie2out",
+		output_dir_profile="results/metaphlan_profiles/",
+		output_report="results/",
+		nthreads=6,
+		ext="png"
+	threads: 6
+	log:
+		"logs/metaphlan.log"
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"python /project/src/metagenpipe.py run-metaphlan --input_type={params.input_type} --output_dir_bowtie={params.output_dir_bowtie} --output_dir_profile={params.output_dir_profile} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"python /project/src/metagenpipe.py metaphlan-report --output_dir={params.output_report} --ext={params.ext} {output.metaphlan_profiles} &>> {log} &&"
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+		
+#rule export:

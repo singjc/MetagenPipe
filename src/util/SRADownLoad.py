@@ -5,6 +5,8 @@ import pandas as pd
 import argparse
 import re
 import gc
+import time
+from warnings import warn
 
 ### Functions to download SRA data given experiment accessions
 ### Can be used as a command line tool or
@@ -28,6 +30,7 @@ def QuerySRA(expt_acc):
     # setup dict for output
     return_dict = {'ExptAcc': [], 'Alias': [], 'RunID': []}
     # run http get request
+    time.sleep(3)
     esearch_req = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term=' + expt_acc)
     esearch_soup = BeautifulSoup(esearch_req.text, "xml")
     esearch_ids = esearch_soup.find_all('Id')
@@ -35,6 +38,7 @@ def QuerySRA(expt_acc):
         raise ValueError('unhandled response, expect only 1 ID associated with accession')
     esearch_id_use = esearch_soup.Id.contents[0]
     print(esearch_id_use)
+    time.sleep(3)
     efetch_req = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use)
     efetch_soup = BeautifulSoup(efetch_req.text, "xml")
     # get runs
@@ -66,10 +70,12 @@ def QuerySRA(expt_acc):
     return return_dict
 
 
-def DownloadRun(run_acc, download_dir):
+def DownloadRun(run_acc, download_dir, extra_args=None):
     """
     Download a run given a run accession
     :param run_acc: run accession
+    :param download_dir: download directory
+    :param extra_args: string noting extra arguments
     :return: makes system call to sra toolkit prefetch command
     """
     cwd = os.getcwd()
@@ -79,7 +85,13 @@ def DownloadRun(run_acc, download_dir):
             os.mkdir(download_dir)
         os.chdir(download_dir)
         code0 = os.system('prefetch ' + run_acc)
-        code1 = os.system('fastq-dump ' + run_acc)
+        ## Build fastq-dump system command
+        fastq_dump_call = 'fastq-dump' 
+        ## Add Extra Args (Assumed to be a string)
+        if extra_args is not None:
+            fastq_dump_call + " " + extra_args
+        fastq_dump_call + " " + run_acc
+        code1 = os.system( fastq_dump_call )
         rm_code = os.system('rm -rf ' + run_acc)
         assert code0 == 0
         assert code1 == 0
@@ -92,12 +104,30 @@ def DownloadRun(run_acc, download_dir):
     finally:
         os.chdir(cwd)
 
+def RemoveFastq(fastq_path):
+    """
+    Remove a fastq file
+    :param fastq_path:
+    :return:
+    """
+    rm_fastq_cmd = 'rm ' + fastq_path
+    try:
+        print('removing ' + fastq_path)
+        rm_fastq_code = os.system(rm_fastq_cmd)
+        assert rm_fastq_code == 0
+    except:
+        raise ValueError(rm_fastq_cmd + ' had exit status ' + str(rm_fastq_code))
 
-def RunAll(expt_acc_list, download_dir):
+
+def RunAll(expt_acc_list, download_dir, overwrite=False, skip=True, extra_args=None):
+
     """
 
     :param expt_acc_list: list of experiment accessions
     :param download_dir: directory to store files
+    :param overwrite: overwrite previous fastq file if exists
+    :param skip: Skip a download upon failure to download
+    :param extra_args: extra arguments to pass to SRAtoolkit
     :return:
     """
     m = 0
@@ -111,18 +141,60 @@ def RunAll(expt_acc_list, download_dir):
             all_runs_df = run_df.copy(deep=True)
             m += 1
         for run_acc in run_dict['RunID']:
-            DownloadRun(run_acc, download_dir)
+            do_download = True
+            fastq_file = run_acc + '.fastq'
+            fastq_path = os.path.join(download_dir, fastq_file)
+
+            if os.path.exists(fastq_path):
+                if overwrite:
+                    RemoveFastq(fastq_path)
+                else:
+                    print(fastq_path + ' exists, and overwrite specified as False, skipping')
+                    do_download = False
+
+            if do_download:
+                try:
+                    DownloadRun(run_acc, download_dir, extra_args)
+                except:
+                    warn('fastq download exited with nonzero status, removing file')
+                    if os.path.exists(fastq_path):
+                        RemoveFastq(fastq_path)
+                    if skip:
+                        warn('failure to download, skipping to next accession in loop')
+                        continue
+                    else:
+                        raise ValueError('nonzero exit status for DownloadRun commands')
+
         del run_df
         del run_dict
         gc.collect()
 
     all_runs_df.to_csv(os.path.join(download_dir, 'all_runs.csv'))
 
+def ParseBool(x, argname):
+    if x == 'True':
+        x = True
+    elif x == 'False':
+        x = False
+    else:
+        raise ValueError(argname + ' must be specified as True or False')
+    return x
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-E", "--all_expt_accs", nargs="*")
-    parser.add_argument("-d", "--download_dir", nargs=1)
+    parser.add_argument("-d", "--download_dir", nargs=1, type=str)
+    parser.add_argument("-X", "--overwrite", nargs=1, type=str, default='False')
+    parser.add_argument("-s", "--skip", nargs=1, type=str, default='True')
+    parser.add_argument("-x", "--extra_args", nargs=1)
     args = parser.parse_args()
     all_expt_accs = args.all_expt_accs
     download_dir = args.download_dir[0]
-    RunAll(all_expt_accs, download_dir)
+    overwrite = args.overwrite[0]
+    skip = args.skip[0]
+    overwrite = ParseBool(overwrite, 'overwrite')
+    extra_args = args.extra_args[0]
+    skip = ParseBool(skip, 'skip')
+
+    RunAll(all_expt_accs, download_dir, overwrite, skip, extra_args)
+
