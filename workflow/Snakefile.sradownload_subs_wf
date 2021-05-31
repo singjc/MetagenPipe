@@ -1,0 +1,23 @@
+rule all:
+    input:
+        "sra_download.done"
+
+rule sra_download:
+    input:
+        accession_file="/project/data/raw/sra_result.csv"
+    output:
+        check=temp(touch("sra_download.done"))
+    params:
+        output_dir="/project/data/raw/SRA/"
+    log:
+        "logs/sra_download.log"
+    shell:
+        "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "echo \"INFO: Getting accessions...\" &>> {log} && "
+        """echo \"INFO: Downloading $(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n 20 | sort | wc -l) accessions...\"  &>> {log} &&"""
+        """accessions=$(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n 20 | sort)  && """
+        #"vdb-config --interactive &&"
+        "python -u /project/src/SRADownLoad.py -E $accessions -d {params.output_dir} -X False -s True &>> {log} && "
+        "end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "echo \"INFO: Process started on $start_dt\" &>> {log} && "
+        "echo \"INFO: Process finished on $end_dt\" &>> {log}"

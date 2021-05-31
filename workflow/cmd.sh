@@ -7,5 +7,9 @@ conda activate microbiome
 # SRA Download Workflow
 #snakemake --snakefile Snakefile.sradownload_wf -j 2
 
+#snakemake --snakefile Snakefile.sradownload_subs_wf -j 1
+
 # Preprocessing Workflow
-snakemake --snakefile Snakefile.subsample_wf -j 6
+#snakemake --snakefile Snakefile.subsample_wf -j 6
+
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6
