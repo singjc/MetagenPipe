@@ -33,8 +33,8 @@ rule kneaddata:
 		#fastq = expand("results/kraken2_5M/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
 	output:
 		#check=temp(touch("kneaddata.done")),
-		extra_fastq = temp(expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids))
-		contam_fastq = temp(expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata_hg37dec_v0.1_bowtie2_contam.fastq", run=run_ids))
+		extra_fastq = temp(expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)),
+		contam_fastq = temp(expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata_hg37dec_v0.1_bowtie2_contam.fastq", run=run_ids)),
 		kneaded_fastq = temp(expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids))
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
