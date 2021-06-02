@@ -1,2 +1,2 @@
 reads_subsample: 50000
-master_output_dir: 'results/kraken2_wf'
+master_output_dir: 'kraken2_wf'
