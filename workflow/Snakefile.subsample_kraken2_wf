@@ -1,6 +1,12 @@
-# run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
-run_ids = "ERR2017411".split()
+configfile: "kraken2_wf_config.yaml"
+
+run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+# run_ids = "ERR2017411".split()
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
+
+master_output_dir=config["master_output_dir"]
+reads_subsample=config["reads_subsample"]
+
 
 rule all:
 	input:
@@ -10,10 +16,10 @@ rule subsample_fastq:
 	input:
 		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
 	output:
-		subsampled_fastq = expand("results/kraken2_5M/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
+		subsampled_fastq = temp(expand("results/{master_output_dir}/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids, master_output_dir=master_output_dir))
 	params:
-		subsample_fraction=5000000,
-		output_dir="results/kraken2_5M/raw_subsampled/",
+		subsample_fraction=reads_subsample,
+		output_dir=expand("results/{master_output_dir}/raw_subsampled/", master_output_dir=master_output_dir),
 		nthreads=6
 	threads: 6
 	#conda:
@@ -30,13 +36,15 @@ rule subsample_fastq:
 rule kneaddata:
 	input:
 		fastq = rules.subsample_fastq.output.subsampled_fastq,
-		#fastq = expand("results/kraken2_5M/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
+		#fastq = expand("results/{master_output_dir}/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids, master_output_dir=master_output_dir)
 	output:
 		#check=temp(touch("kneaddata.done")),
-		kneaded_fastq = expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)
+		extra_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids, master_output_dir=master_output_dir)),
+		contam_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata_hg37dec_v0.1_bowtie2_contam.fastq", run=run_ids, master_output_dir=master_output_dir)),
+		kneaded_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids, master_output_dir=master_output_dir))
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
-		output_dir="results/kraken2_5M/kneadeddata/",
+		output_dir=expand("results/{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
 		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
 		nthreads=6
 	threads: 6
@@ -46,7 +54,7 @@ rule kneaddata:
 		"logs/kneaddata.log"
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/metagenpipe.py run-kneaddata --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"python /project/src/metagenpipe.py run-kneaddata --no-paired_end --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
@@ -57,11 +65,11 @@ rule kraken2:
 		#fastq = expand("results/kraken2_5M/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)
 	output:
 		check=temp(touch("kraken2.done")),
-		read_files = expand("results/kraken2_5M/kraken2/{run}_seqt.subsampled_kneaddata.trimmed_read_output.txt", run=run_ids),
-		freq_files = expand("results/kraken2_5M/kraken2/{run}_seqt.subsampled_kneaddata.trimmed_freq_output.txt", run=run_ids)
+		read_files = expand("results/{master_output_dir}/kraken2/{run}_seqt.subsampled_kneaddata_read_output.txt", run=run_ids, master_output_dir=master_output_dir),
+		freq_files = expand("results/{master_output_dir}/kraken2/{run}_seqt.subsampled_kneaddata_freq_output.txt", run=run_ids, master_output_dir=master_output_dir)
 	params:
 		input_type="fastq",
-		output_dir="results/kraken2_5M/kraken2",
+		output_dir=expand("results/{master_output_dir}/kraken2", master_output_dir=master_output_dir),
 		reference_db="/project/data/raw/kraken2_db",
 		nthreads=6,
 		dbname="/project/data/raw/kraken2db"
