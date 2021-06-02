@@ -69,9 +69,11 @@ def extract_all( archive ):
     Unpack an archive in the same directory of the located archive
     '''
     extract_path=os.path.dirname(os.path.realpath(archive))
-    shutil.register_unpack_format('gz',
-                              ['.gz', ],
-                              gunzip_something)
+    # Get current registered unpacking/archival formats
+    registered_formats = shutil.get_unpack_formats()
+    # Check to see if plain gunzip is part of registered formats
+    if ('gz' not in [format[0] for format in registered_formats]):
+        shutil.register_unpack_format('gz', ['.gz', ], gunzip_something)
     shutil.unpack_archive(archive, extract_path)
 
 def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_subsampled/"), two_pass_mode=False, rng_seed=100, add_file_tag=False, remove_untarred_fastq=True  ):

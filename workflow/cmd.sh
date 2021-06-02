@@ -12,4 +12,12 @@ conda activate microbiome
 # Preprocessing Workflow
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6 --config master_output_dir='kraken2_5M' reads_subsample=5000000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6 --config master_output_dir='kraken2_1M' reads_subsample=1000000
+nakemake --snakefile Snakefile.subsample_kraken2_wf -j 6 --config master_output_dir='kraken2_500K' reads_subsample=500000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6 --config master_output_dir='kraken2_100K' reads_subsample=100000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6 --config master_output_dir='kraken2_50K' reads_subsample=50000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6 --config master_output_dir='kraken2_10K' reads_subsample=10000
+
+
+conda deactivate

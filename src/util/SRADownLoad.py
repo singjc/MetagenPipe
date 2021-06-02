@@ -4,6 +4,8 @@ import os
 import pandas as pd
 import argparse
 import re
+import click
+from datetime import datetime
 import gc
 import time
 from warnings import warn
@@ -37,12 +39,17 @@ def QuerySRA(expt_acc):
     if not len(esearch_ids) == 1:
         raise ValueError('unhandled response, expect only 1 ID associated with accession')
     esearch_id_use = esearch_soup.Id.contents[0]
-    print(esearch_id_use)
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: HTML ID Tag: {esearch_id_use}" )
+    click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: GET URL: {'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use}" )
+
     time.sleep(3)
+
     efetch_req = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=' + esearch_id_use)
     efetch_soup = BeautifulSoup(efetch_req.text, "xml")
+    # print(efetch_soup)
     # get runs
     run_set = efetch_soup.RUN_SET
+    # print(run_set)
     run_tags = run_set.find_all('RUN')
     if len(run_tags) < 1:
         raise ValueError('expect 1 or more runs associated with accession')
@@ -89,8 +96,9 @@ def DownloadRun(run_acc, download_dir, extra_args=None):
         fastq_dump_call = 'fastq-dump' 
         ## Add Extra Args (Assumed to be a string)
         if extra_args is not None:
-            fastq_dump_call + " " + extra_args
-        fastq_dump_call + " " + run_acc
+            fastq_dump_call = fastq_dump_call + " " + extra_args
+        fastq_dump_call = fastq_dump_call + " " + run_acc
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: fastq-dump call: {fastq_dump_call}" )
         code1 = os.system( fastq_dump_call )
         rm_code = os.system('rm -rf ' + run_acc)
         assert code0 == 0
@@ -132,8 +140,12 @@ def RunAll(expt_acc_list, download_dir, overwrite=False, skip=True, extra_args=N
     """
     m = 0
     for expt_acc in expt_acc_list:
-        print(expt_acc)
-        run_dict = QuerySRA(expt_acc)
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Getting data for experiment accession: {expt_acc}" )
+        try:
+            run_dict = QuerySRA(expt_acc)
+        except:
+            click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: QuerySRA failed for experiment accession: {expt_acc}" )
+            pass
         run_df = pd.DataFrame(run_dict)
         if m > 0:
             all_runs_df = all_runs_df.append(run_df.copy(deep=True))
@@ -141,6 +153,19 @@ def RunAll(expt_acc_list, download_dir, overwrite=False, skip=True, extra_args=N
             all_runs_df = run_df.copy(deep=True)
             m += 1
         for run_acc in run_dict['RunID']:
+# <<<<<<< HEAD
+#             # Get files in download dir to check for files already present in directory
+#             _, _, filenames = next(os.walk(download_dir))
+#             experiment_accession_fastq_files_bool = [bool(re.search(run_dict['RunID'][0]+"(_[12])?.fastq(.tar)?(.gz)?", i)) for i in filenames]
+#             if (os.path.exists(download_dir + os.path.sep + run_dict['RunID'][0]) and any(experiment_accession_fastq_files_bool)):
+#                 # If a folder with accession id already exists in download_dir, skip this accession, to save time on restarting from failed downloads
+#                 existing_fastq_files = [file for file, bool in zip(filenames, experiment_accession_fastq_files_bool) if bool]
+#                 click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Skipping experiment accession {expt_acc} with RunID {run_dict['RunID'][0]}.\nThere already seems to be data for this in {download_dir}.\nThere are {len(existing_fastq_files)} existing fastq files found.\n{str(existing_fastq_files)}" )
+#                 pass
+#             else:
+#                 DownloadRun(run_acc, download_dir, extra_args)
+#         print()
+# =======
             do_download = True
             fastq_file = run_acc + '.fastq'
             fastq_path = os.path.join(download_dir, fastq_file)
