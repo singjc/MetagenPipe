@@ -1,7 +1,7 @@
 configfile: "kraken2_wf_config.yaml"
 
-# run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
-run_ids = "ERR2017411".split()
+run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+# run_ids = "ERR2017411".split()
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
 
 master_output_dir=config["master_output_dir"]
