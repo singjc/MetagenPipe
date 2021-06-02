@@ -10,7 +10,7 @@ rule subsample_fastq:
 	input:
 		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
 	output:
-		subsampled_fastq = expand("results/kraken2_5M/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
+		subsampled_fastq = temp(expand("results/kraken2_5M/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids))
 	params:
 		subsample_fraction=5000000,
 		output_dir="results/kraken2_5M/raw_subsampled/",
@@ -33,7 +33,7 @@ rule kneaddata:
 		#fastq = expand("results/kraken2_5M/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids)
 	output:
 		#check=temp(touch("kneaddata.done")),
-		kneaded_fastq = expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids)
+		kneaded_fastq = temp(expand("results/kraken2_5M/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids))
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir="results/kraken2_5M/kneadeddata/",
