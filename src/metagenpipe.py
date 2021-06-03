@@ -8,7 +8,7 @@ import multiprocessing
 import re
 from datetime import datetime
 
-from preprocessing.data_processing import seqtk_call, kneaddata_call, metaphlan_call, parse_metaphlan_file, kraken2_call
+from preprocessing.data_processing import seqtk_call, kneaddata_call, metaphlan_call, parse_metaphlan_file, kraken2_call, parse_kraken2_freq
 from preprocessing.report import save_report
 from warnings import warn
 from util.SRADownLoad import RunAll
@@ -203,9 +203,55 @@ def parse_metaphlan_multi( inp_files, output_dir='./', outfile='relative_abundan
             sorted_cols = df_c.columns.to_numpy().astype('str').sort()
             df_c = df_c.loc[:, sorted_cols]
             df_i = df_i.loc[:, sorted_cols]
-            df_c.append(df_i)
+            df_c = df_c.append(df_i)
 
     df_c.to_csv(os.path.join(output_dir, outfile))
+
+
+@cli.command()
+@click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory to store matrix output')
+@click.option('--freq_mat_file', default=('relative_abundances.csv'), show_default=True, type=str, help='filename for matrix output, relative abundances')
+@click.option('--count_mat_file', default=('assignment_counts.csv'), show_default=True, type=str, help='filename for matrix output, reads assigned to taxa')
+@click.option('--tax_level_select', default=('^S$'), show_default=True, type=str, help='taxonomic level to index. should be given as a regex, as there appear to be subdivisions of certain taxonomic levels')
+def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abundances.csv', count_mat_file='assignment_counts.csv' ,
+                         tax_level_select='^S$'):
+    """
+
+    :param inp_files: input files. should be a kraken2 relative abundance report
+    :param output_dir: Directory to store output matrices
+    :param freq_mat_file: filename for matrix output, relative abundances
+    :param count_mat_file: filename for matrix output, reads assigned to taxa
+    :param tax_level_select: taxonomic level to index. should be given as a regex, as there appear to be subdivisions of certain taxonomic levels'
+    :return:
+    """
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    m = 0
+
+    for f in inp_files:
+        df = parse_kraken2_freq(f)
+        tax_level = df['tax_level'].to_numpy().astype('str')
+        idx_keep = np.array([re.match(tax_level_select, x) is not None for x in tax_level])
+        df = df.iloc[idx_keep, :]
+        df['filename'] = np.repeat(os.path.basename(f), df.shape[0])
+
+        if m == 0:
+            m += 1
+            master_df = df
+        else:
+            master_df = master_df.append(df)
+
+    freq_df = master_df.loc[:, ['freq', 'tax_name', 'filename']]
+    count_df = master_df.loc[:, ['total_assigned', 'tax_name', 'filename']]
+    freq_mat_df = freq_df.pivot(index='filename', columns='tax_name', values='freq')
+    count_mat_df = count_df.pivot(index='filename', columns='tax_name', values='total_assigned')
+
+    freq_mat_df.to_csv(os.path.join(output_dir, freq_mat_file))
+    count_mat_df.to_csv(os.path.join(output_dir, count_mat_file))
+
 
 @cli.command()
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))

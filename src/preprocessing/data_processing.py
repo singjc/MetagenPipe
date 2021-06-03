@@ -253,3 +253,15 @@ def kraken2_call( input_file, db_use, reads_file, freq_file, nthreads=1 ):
     cmd = 'kraken2 --db {0} --output {1} --report {2} --threads {3} {4}'.format(db_use, reads_file, freq_file, nthreads, input_file)
     exit_status = os.system(cmd)
     return exit_status
+
+def parse_kraken2_freq( freq_file ):
+    """
+
+    :param freq_file:
+    :return: data frame with taxa frequency information at the specified taxonomic level
+    """
+
+    df = pd.read_csv(freq_file, header=False, delimiter='\t')
+    # frequency, total assigned reads, total reads directly assigned, taxonomic level, ncbi id, taxonomic name
+    df.columns = ['freq', 'total_assigned', 'total_direct', 'tax_level', 'ncbi_id', 'tax_name']
+    return df
