@@ -218,7 +218,7 @@ def parse_metaphlan_file( input_file ):
     Note: expect that basename of file is unique
 
     """
-    input = pd.read_csv(input_file, delimiter='\t', skiprows=4, header=False)
+    input = pd.read_csv(input_file, delimiter='\t', skiprows=4, header=None)
     # taxa is in 1st col, relative abundance in 3rd. See https://github.com/biobakery/biobakery/wiki/metaphlan3#output-files
     # for more details
     taxa = input.iloc[: , 0].to_numpy().astype('str')
@@ -261,7 +261,7 @@ def parse_kraken2_freq( freq_file ):
     :return: data frame with taxa frequency information at the specified taxonomic level
     """
 
-    df = pd.read_csv(freq_file, header=False, delimiter='\t')
+    df = pd.read_csv(freq_file, header=None, delimiter='\t')
     # frequency, total assigned reads, total reads directly assigned, taxonomic level, ncbi id, taxonomic name
     df.columns = ['freq', 'total_assigned', 'total_direct', 'tax_level', 'ncbi_id', 'tax_name']
     return df
