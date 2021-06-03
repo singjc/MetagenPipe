@@ -10,7 +10,7 @@ reads_subsample=config["reads_subsample"]
 
 rule all:
 	input:
-		"kraken2.done"
+		"matrix.done"
 
 rule subsample_fastq:
 	input:
@@ -88,15 +88,15 @@ rule matrix:
         freq_files = rules.kraken2.output.freq_files
     output:
         check=temp(touch("matrix.done")),
-        count_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir)
+        count_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir),
         freq_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir)
     params:
-        output_dir = expand("results/{master_output_dir}/matrix", master_output_dir=master_output_dir)
-        count_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir)
+        output_dir = expand("results/{master_output_dir}/matrix", master_output_dir=master_output_dir),
+        count_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir),
         freq_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir)
     shell:
         "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-        "python /project/src/metagenpipe.py parse-kraken2-multi --output_dir={params.output.dir} --freq_mat_file={params.freq_mat} --count_mat_file={params.count_mat} &>> {log} &&"
+        "python /project/src/metagenpipe.py parse-kraken2-multi --output_dir={params.output.dir} --freq_mat_file={params.freq_mat} --count_mat_file={params.count_mat} input.freq_files &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
