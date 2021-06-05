@@ -1,7 +1,7 @@
 configfile: "kraken2_wf_config.yaml"
 
-run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
-# run_ids = "ERR2017411".split()
+#run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
 
 master_output_dir=config["master_output_dir"]
@@ -89,14 +89,14 @@ rule matrix:
     output:
         check=temp(touch("matrix.done")),
         count_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir),
-        freq_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir)
+        freq_mat = expand("results/{master_output_dir}/matrix/freq_mat.csv", master_output_dir=master_output_dir)
     params:
         output_dir = expand("results/{master_output_dir}/matrix", master_output_dir=master_output_dir),
         count_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir),
-        freq_mat = expand("results/{master_output_dir}/matrix/count_mat.csv", master_output_dir=master_output_dir)
+        freq_mat = expand("results/{master_output_dir}/matrix/freq_mat.csv", master_output_dir=master_output_dir)
     shell:
 	        "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-	        "python /project/src/metagenpipe.py parse-kraken2-multi --output_dir={params.output.dir} --freq_mat_file={params.freq_mat} --count_mat_file={params.count_mat} input.freq_files &>> {log} &&"
+	        "python /project/src/metagenpipe.py parse-kraken2-multi --output_dir={params.output_dir} --freq_mat_file={params.freq_mat} --count_mat_file={params.count_mat} input.freq_files &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
