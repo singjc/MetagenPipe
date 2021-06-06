@@ -100,7 +100,7 @@ rule matrix:
 		freq_mat = expand("results/{master_output_dir}/matrix/freq_mat.csv", master_output_dir=master_output_dir)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/metagenpipe.py parse-kraken2-multi --output_dir={params.output_dir} --freq_mat_file={params.freq_mat} --count_mat_file={params.count_mat} input.freq_files &>> {log} &&"
+		"python /project/src/metagenpipe.py parse-kraken2-multi --output_dir={params.output_dir} --freq_mat_file={params.freq_mat} --count_mat_file={params.count_mat} {input.freq_files} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
