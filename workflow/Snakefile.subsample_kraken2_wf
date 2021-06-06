@@ -16,8 +16,8 @@ rule subsample_fastq:
 	input:
 		fastq = expand("/project/data/raw/SRA/{run}.fastq", run=run_ids)
 	output:
-		#subsampled_fastq = temp(expand("results/{master_output_dir}/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids, master_output_dir=master_output_dir))
-		subsampled_fastq = expand("results/{master_output_dir}/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids, master_output_dir=master_output_dir)
+		subsampled_fastq = temp(expand("results/{master_output_dir}/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids, master_output_dir=master_output_dir))
+		#subsampled_fastq = expand("results/{master_output_dir}/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids, master_output_dir=master_output_dir)
 	params:
 		subsample_fraction=reads_subsample,
 		output_dir=expand("results/{master_output_dir}/raw_subsampled/", master_output_dir=master_output_dir),
@@ -40,12 +40,12 @@ rule kneaddata:
 		#fastq = expand("results/{master_output_dir}/raw_subsampled/{run}_seqt.subsampled.fastq", run=run_ids, master_output_dir=master_output_dir)
 	output:
 		#check=temp(touch("kneaddata.done")),
-		#extra_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids, master_output_dir=master_output_dir)),
-		#contam_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata_hg37dec_v0.1_bowtie2_contam.fastq", run=run_ids, master_output_dir=master_output_dir)),
-		#kneaded_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids, master_output_dir=master_output_dir))
-		extra_fastq = expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids, master_output_dir=master_output_dir),
-		contam_fastq = expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata_hg37dec_v0.1_bowtie2_contam.fastq", run=run_ids, master_output_dir=master_output_dir),
-		kneaded_fastq = expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids, master_output_dir=master_output_dir)
+		extra_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids, master_output_dir=master_output_dir)),
+		contam_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata_hg37dec_v0.1_bowtie2_contam.fastq", run=run_ids, master_output_dir=master_output_dir)),
+		kneaded_fastq = temp(expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids, master_output_dir=master_output_dir))
+		#extra_fastq = expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.trimmed.fastq", run=run_ids, master_output_dir=master_output_dir),
+		#contam_fastq = expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata_hg37dec_v0.1_bowtie2_contam.fastq", run=run_ids, master_output_dir=master_output_dir),
+		#kneaded_fastq = expand("results/{master_output_dir}/kneadeddata/{run}_seqt.subsampled_kneaddata.fastq", run=run_ids, master_output_dir=master_output_dir)
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir=expand("results/{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
