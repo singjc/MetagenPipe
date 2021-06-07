@@ -1,11 +1,13 @@
 configfile: "kraken2_wf_config.yaml"
 
-#run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
-run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
+run_ids, = glob_wildcards("/project/data/raw/SRA/{run}.fastq")
+# run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
 
 master_output_dir=config["master_output_dir"]
 reads_subsample=config["reads_subsample"]
+# for now use master output directory name (not full path)
+logfile_suffix='_' + config["master_output_dir"]
 
 
 rule all:
@@ -21,12 +23,12 @@ rule subsample_fastq:
 	params:
 		subsample_fraction=reads_subsample,
 		output_dir=expand("results/{master_output_dir}/raw_subsampled/", master_output_dir=master_output_dir),
-		nthreads=6
-	threads: 6
+		nthreads=8
+	threads: 8
 	#conda:
 		#"envs/seqtk.yml"
 	log:
-		"logs/subsample_fastq.log"
+		expand("logs/subsample_fastq{logfile_suffix}.log", logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"python /project/src/metagenpipe.py run-seqtk --subsample_fraction={params.subsample_fraction} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&" 
@@ -50,12 +52,12 @@ rule kneaddata:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir=expand("results/{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
 		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
-		nthreads=6
-	threads: 6
+		nthreads=8
+	threads: 8
 	#conda:
 		#"envs/kneaddata.yml"
 	log:
-		"logs/kneaddata.log"
+		expand("logs/kneaddata{logfile_suffix}.log", logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"python /project/src/metagenpipe.py run-kneaddata --no-paired_end --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
@@ -75,11 +77,11 @@ rule kraken2:
 		input_type="fastq",
 		output_dir=expand("results/{master_output_dir}/kraken2", master_output_dir=master_output_dir),
 		reference_db="/project/data/raw/kraken2_db",
-		nthreads=6,
+		nthreads=8,
 		dbname="/project/data/raw/kraken2db"
-	threads: 6
+	threads: 8
 	log:
-		"logs/kraken2.log"
+		expand("logs/kraken2{logfile_suffix}.log", logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"python /project/src/metagenpipe.py run-kraken2 --db_use={params.reference_db} --output_dir={params.output_dir} --nthreads {params.nthreads} {input.fastq} &>> {log} &&"
@@ -99,7 +101,7 @@ rule matrix:
 		count_mat = "count_mat.csv",
 		freq_mat = "freq_mat.csv"
 	log:
-		"logs/matrix.log"
+		expand("logs/matrix{logfile_suffix}.log", logfile_suffix=logfile_suffix)
 	shell:
  		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
  		"python /project/src/metagenpipe.py parse-kraken2-multi --output_dir={params.output_dir} --freq_mat_file={params.freq_mat} --count_mat_file={params.count_mat} {input.freq_files} &>> {log} &&"

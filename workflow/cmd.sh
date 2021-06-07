@@ -15,14 +15,14 @@ conda activate microbiome
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 # to unlock directory
 snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True
-
-# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6  --config master_output_dir='kraken2_10M' reads_subsample=10000000
-# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6  --config master_output_dir='kraken2_5M' reads_subsample=5000000
-# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6  --config master_output_dir='kraken2_1M' reads_subsample=1000000
-# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6  --config master_output_dir='kraken2_500K' reads_subsample=500000
-# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6  --config master_output_dir='kraken2_100K' reads_subsample=100000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6  --config master_output_dir='kraken2_50K' reads_subsample=50000
-# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6  --config master_output_dir='kraken2_25K' reads_subsample=25000
-# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 6  --config master_output_dir='kraken2_10K' reads_subsample=10000
+# to run at various depths
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_10M' reads_subsample=10000000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_5M' reads_subsample=5000000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_1M' reads_subsample=1000000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_500K' reads_subsample=500000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_100K' reads_subsample=100000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_50K' reads_subsample=50000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_25K' reads_subsample=25000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_10K' reads_subsample=10000
 
 conda deactivate
