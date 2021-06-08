@@ -24,5 +24,8 @@ snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_outpu
 snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_50K' reads_subsample=50000
 snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_25K' reads_subsample=25000
 snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_10K' reads_subsample=10000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_5K' reads_subsample=5000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_1K' reads_subsample=1000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_500' reads_subsample=500
 
 conda deactivate
