@@ -3,7 +3,7 @@ configfile: "kraken2_wf_config.yaml"
 import os
 
 # setup params, inputs
-raw_data_dir, = config["raw_data_dir"]
+raw_data_dir = config["raw_data_dir"]
 run_ids, = glob_wildcards(raw_data_dir + "/{run}.fastq")
 # run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
@@ -29,7 +29,7 @@ rule subsample_fastq:
 	params:
 		subsample_fraction=reads_subsample,
 		output_dir=expand("{master_output_dir}/raw_subsampled/", master_output_dir=master_output_dir),
-		nthreads=nthreads
+		nthreads=nthreads,
 		seqtk_seed=seqtk_seed
 	threads: nthreads
 	#conda:
