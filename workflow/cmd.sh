@@ -5,6 +5,42 @@ set -e
 source /root/anaconda/etc/profile.d/conda.sh
 conda activate microbiome
 
+
+
+top_results_dir="results"
+log_dir="logs"
+archive_results=1
+timestamp=$(date +"%Y_%b_%d_%H_%M_%S")
+
+top_archive_results_dir="archive"
+
+if [ ! -d $top_archive_results_dir ]; then
+  mkdir $top_archive_results_dir
+fi
+
+if [ -d $top_results_dir ]
+then
+  if [ $archive_results -eq 1 ]
+  then
+    archive_results_dir="${top_archive_results_dir}/${top_results_dir}_${timestamp}"
+    echo "moving ${top_results_dir} contents to ${archived_results_dir}"
+    mv $top_results_dir $archive_results_dir
+  fi
+else
+  mkdir $top_results_dir
+fi
+
+if [ -d $log_dir ]
+then
+  if [ $archive_results -eq 1 ]
+  then
+    archive_log_dir="${top_archive_results_dir}/${log_dir}_${timestamp}"
+    echo "moving ${log_dir} contents to ${archive_log_dir}"
+  fi
+else
+  mkdir $log_dir
+fi
+
 # SRA Download Workflow
 #snakemake --snakefile Snakefile.sradownload_wf -j 2
 
@@ -16,13 +52,17 @@ conda activate microbiome
 # to unlock directory
 snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True
 # to run at various depths
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_10M' reads_subsample=10000000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_5M' reads_subsample=5000000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_1M' reads_subsample=1000000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_500K' reads_subsample=500000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_100K' reads_subsample=100000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_50K' reads_subsample=50000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_25K' reads_subsample=25000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config master_output_dir='kraken2_10K' reads_subsample=10000
+
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=64 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_5M" reads_subsample=5000000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=47 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_1M" reads_subsample=1000000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=74 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_500K" reads_subsample=500000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=43 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_100K" reads_subsample=100000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=86 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_50K" reads_subsample=50000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=103 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_25K" reads_subsample=25000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=207 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K" reads_subsample=10000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=23 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_5K" reads_subsample=5000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=809 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_1K" reads_subsample=1000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=42 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_500" reads_subsample=500
 
 conda deactivate

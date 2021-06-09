@@ -1,2 +1,6 @@
-reads_subsample: 50000
-master_output_dir: 'kraken2_wf'
+reads_subsample: 10000
+master_output_dir: 'results/kraken2_wf'
+log_dir: 'logs'
+raw_data_dir: '/project/data/raw/SRA/'
+seqtk_seed: 100
+nthreads: 8
