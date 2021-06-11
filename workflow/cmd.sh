@@ -36,6 +36,7 @@ then
   then
     archive_log_dir="${top_archive_results_dir}/${log_dir}_${timestamp}"
     echo "moving ${log_dir} contents to ${archive_log_dir}"
+    mv $log_dir $archive_log_dir
   fi
 else
   mkdir $log_dir
@@ -64,5 +65,11 @@ snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=2
 snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=23 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_5K" reads_subsample=5000
 snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=809 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_1K" reads_subsample=1000
 snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=42 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_500" reads_subsample=500
+# run at 10K with various subsample seeds to see if we get variability in number of features detected
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=42 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed42" reads_subsample=10000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=47 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed47" reads_subsample=10000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=29 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed29" reads_subsample=10000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=93 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed93" reads_subsample=10000
+snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=87 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed87" reads_subsample=10000
 
 conda deactivate
