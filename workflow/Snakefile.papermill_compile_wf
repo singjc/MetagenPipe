@@ -1,0 +1,24 @@
+rule all:
+    input:
+        "papermill_compile.done"
+
+rule papermill_compile:
+    input:
+        nb_file='/project/src/LR_Classifier_generic.ipynb'
+    output:
+        check=temp(touch("papermill_compile.done")),
+        nb_output='/project/workflow/results/notebooks/LR_Classifier_generic.ipynb'
+    params:
+        inp_mat_file = '/project/data/raw/freq_mat_50K.xlsx',
+        metadata_file = '/project/data/raw/Jie_2017_supp_table_1.xlsx',
+        identifiers_file = '/project/data/raw/SRA/all_runs.csv',
+        output_dir = '/project/workflow/results/notebooks',
+        retrain = True
+    log:
+        "logs/papermill_compile.log"
+    shell:
+        "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "papermill {input.nb_file} {output.nb_output} -p inp_mat_file {params.inp_mat_file} -p metadata_file {params.metadata_file} -p identifiers_file {params.identifiers_file} -p output_dir {params.output_dir} -p retrain {params.retrain} && "
+        "end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "echo \"INFO: Process started on $start_dt\" &>> {log} && "
+        "echo \"INFO: Process finished on $end_dt\" &>> {log}"

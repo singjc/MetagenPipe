@@ -51,6 +51,7 @@ conda install lxml -y
 conda install -c bioconda seqtk -y
 conda install -c conda-forge mamba -y
 conda install -c conda-forge bioconda::snakemake -y
+conda install -c conda-forge papermill -y
 
 # metaphlan, humann2, + kneaddata install databases
 # mkdir /databases
