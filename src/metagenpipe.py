@@ -28,12 +28,15 @@ def cli( ctx ):
 @cli.command()
 @click.argument('all_expt_accs', nargs=-1, type=click.STRING)
 @click.option('--download_dir', default=(os.getcwd()+"/SRA/"), show_default=True, type=str, help='Directory to store data.')
+@click.option('--overwrite', default=False, show_default=True, type=bool, help='overwrite existing fastq files')
+@click.option('--skip', default=True, show_default=True, type=bool, help='skip download upon failure')
+@click.option('--accs_only', default=False, show_default=True, type=bool, help='only download accessions and mapped identifiers, no fastqs')
 @click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to fastq_dump, encapsulated as a string. i.e. \"-I --gzip --split-files\"')
-def sra_downloader( all_expt_accs, download_dir, extra_args ):
+def sra_downloader( all_expt_accs, download_dir, overwrite, skip, accs_only, extra_args ):
     '''
     Main function call to SRA Downloader
     '''
-    RunAll(all_expt_accs, download_dir, extra_args)
+    RunAll(all_expt_accs, download_dir, overwrite, skip, accs_only, extra_args)
 
 # Main Subsampling with seqtk
 @cli.command()
