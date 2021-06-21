@@ -92,6 +92,10 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
     if add_file_tag:
         fastq_subsampled_file + "_seed_" + str(round(rng_seed)) + "_fraction_" + str(round(subsample_fraction))
     fastq_subsampled_file = output_dir + "/" + fastq_subsampled_file  + ".fastq"
+    ## Check if subsampled file already exists, if it does skip
+    if os.path.exists(fastq_subsampled_file):
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] WARN: Subsampled file {fastq_subsampled_file} already exits, skipping..." )
+        return
     ## Generate list command
     shell_cmd_list = ['seqtk', 'sample']
     if two_pass_mode:
