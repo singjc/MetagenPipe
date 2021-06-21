@@ -135,9 +135,9 @@ class DiffExpTransform():
 
         if not self.expected_shape is None:
             try:
-                assert X.shape == self.expected_shape
+                assert X.shape[1] == self.expected_shape[1]
             except:
-                raise ValueError("Expect X to have shape {}, input has shape {}".format(self.expected_shape, X.shape))
+                raise ValueError("Expect X to have {} features, input has shape {}".format(self.expected_shape[1], X.shape))
 
     def check_Y_(self, y):
 
@@ -151,7 +151,7 @@ class DiffExpTransform():
         except:
             raise ValueError("expect y to be integer or string")
 
-    def fit(self, X, y):
+    def fit(self, X, y, **fit_params):
         """
 
         :param X: m x n matrix of values
@@ -175,6 +175,7 @@ class DiffExpTransform():
             self.selected_feats[rejected] = True
 
         self.expected_shape = X.shape
+        return self
 
     def transform(self, X):
         """
@@ -331,7 +332,7 @@ class Trainer:
         # print("ARGS")
         # print(**args)
         if not self.pipeline_X is None:
-            self.pipeline_X.fit(X)
+            self.pipeline_X.fit(X, y)
             
         if not self.pipeline_y is None:
             self.pipeline_y.fit(y)
