@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn import model_selection
 import copy
 from vizwiz import VizWiz
+from scipy.stats import ttest_ind as ttest
+from statsmodels.stats.multitest import fdrcorrection
 from sklearn.pipeline import Pipeline
 
 # Define class for indexing data
@@ -106,6 +108,91 @@ class MicroBiomeDataSet:
             raise ValueError('item_return should not be None')
         
         return item_return
+
+class DiffExpTransform():
+    """
+    Apply Differential Abundance Analysis to 2 or more groups. Transformer-like object
+
+    attributes:
+        selected_feats = indicator vector for features selected for further
+        results = dict of differential abundance results. T-test is performed comparing in class samples to
+            out of class samples. T-statistic will be positive if mean of in-class set is greater than mean
+            of out of class set
+        fdr = false discovery rate
+    """
+    def __init__(self, fdr=0.05):
+        self.selected_feats = None
+        self.results = {}
+        self.fdr = fdr
+        self.expected_shape = None
+
+    def check_X_(self, X):
+
+        try:
+            assert len(X.shape) == 2
+        except:
+            raise ValueError("expect X to be 2D array. X has shape {}".format(X.shape))
+
+        if not self.expected_shape is None:
+            try:
+                assert X.shape[1] == self.expected_shape[1]
+            except:
+                raise ValueError("Expect X to have {} features, input has shape {}".format(self.expected_shape[1], X.shape))
+
+    def check_Y_(self, y):
+
+        try:
+            assert len(y.shape) == 1
+        except:
+            raise ValueError("expect y to be 1D array. y has shape {}".format(y.shape))
+
+        try:
+            assert (np.issubdtype(y.dtype, np.integer) | np.issubdtype(y.dtype, np.str_))
+        except:
+            raise ValueError("expect y to be integer or string")
+
+    def fit(self, X, y, **fit_params):
+        """
+
+        :param X: m x n matrix of values
+        :param y: vector of length m, denoting 2 or more classes
+        :return: object is modified with selected features
+        """
+
+        self.check_X_(X)
+        self.check_Y_(y)
+        y_classes = np.sort(np.unique(y))
+        self.selected_feats = np.zeros((X.shape[1],)).astype('bool')
+
+        for c in y_classes:
+            in_class = np.in1d(y, c)
+            X1 = X[in_class, :]
+            X2 = X[np.logical_not(in_class), :]
+            tstat, pval = ttest(X1, X2, axis=0, alternative='greater')
+            rejected, p_adj = fdrcorrection(pval, alpha=self.fdr)
+            result_df = pd.DataFrame({'tstat': tstat, 'pval': pval, 'p_adj': p_adj, 'rejected': rejected})
+            self.results[str(c)] = result_df
+            self.selected_feats[rejected] = True
+
+        self.expected_shape = X.shape
+        return self
+
+    def transform(self, X):
+        """
+
+        :param X: m x n matrix of values
+        :return: X, subsetted for only features of interest
+        """
+
+        if self.expected_shape is None:
+            raise ValueError('self.expected_shape is None, run fit method before calling transform')
+        elif np.all(np.logical_not(self.selected_feats)):
+            raise ValueError('all entries in self.selected_feats false. possible that features are not differential between classes')
+
+        self.check_X_(X)
+        X_subs = X[:, self.selected_feats]
+        return X_subs
+
             
 class list_transformer():
     """
@@ -245,7 +332,7 @@ class Trainer:
         # print("ARGS")
         # print(**args)
         if not self.pipeline_X is None:
-            self.pipeline_X.fit(X)
+            self.pipeline_X.fit(X, y)
             
         if not self.pipeline_y is None:
             self.pipeline_y.fit(y)

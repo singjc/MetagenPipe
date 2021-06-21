@@ -9,7 +9,7 @@ conda activate microbiome
 
 top_results_dir="results"
 log_dir="logs"
-archive_results=1
+archive_results=0
 timestamp=$(date +"%Y_%b_%d_%H_%M_%S")
 
 top_archive_results_dir="archive"
@@ -51,25 +51,26 @@ fi
 
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 # to unlock directory
-snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True
+# snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True
 # to run at various depths
 
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=64 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_5M" reads_subsample=5000000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=47 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_1M" reads_subsample=1000000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=74 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_500K" reads_subsample=500000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=43 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_100K" reads_subsample=100000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=86 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_50K" reads_subsample=50000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=103 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_25K" reads_subsample=25000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=207 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K" reads_subsample=10000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=23 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_5K" reads_subsample=5000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=809 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_1K" reads_subsample=1000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=42 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_500" reads_subsample=500
-# run at 10K with various subsample seeds to see if we get variability in number of features detected
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=42 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed42" reads_subsample=10000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=47 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed47" reads_subsample=10000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=29 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed29" reads_subsample=10000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=93 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed93" reads_subsample=10000
-snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=87 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed87" reads_subsample=10000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=64 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_5M" reads_subsample=5000000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=47 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_1M" reads_subsample=1000000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=74 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_500K" reads_subsample=500000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=43 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_100K" reads_subsample=100000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=86 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_50K" reads_subsample=50000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=103 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_25K" reads_subsample=25000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=207 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K" reads_subsample=10000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=23 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_5K" reads_subsample=5000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=809 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_1K" reads_subsample=1000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=42 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_500" reads_subsample=500
+# # run at 10K with various subsample seeds to see if we get variability in number of features detected
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=42 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed42" reads_subsample=10000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=47 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed47" reads_subsample=10000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=29 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed29" reads_subsample=10000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=93 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed93" reads_subsample=10000
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=87 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed87" reads_subsample=10000
+snakemake --snakefile Snakefile.papermill_compile_wf -j 1
 
 conda deactivate
