@@ -147,7 +147,7 @@ class DiffExpTransform():
             raise ValueError("expect y to be 1D array. y has shape {}".format(y.shape))
 
         try:
-            assert (np.issubdtype(y.dtype, np.integer) || np.issubdtype(y.dtype, np.str_))
+            assert (np.issubdtype(y.dtype, np.integer) | np.issubdtype(y.dtype, np.str_))
         except:
             raise ValueError("expect y to be integer or string")
 
@@ -170,9 +170,11 @@ class DiffExpTransform():
             X2 = X[np.logical_not(in_class), :]
             tstat, pval = ttest(X1, X2, axis=0, alternative='greater')
             rejected, p_adj = fdrcorrection(pval, alpha=self.fdr)
-            result_df = pd.DataFrame({tstat: tstat, pval: pval, p_adj: p_adj, rejected: rejected})
+            result_df = pd.DataFrame({'tstat': tstat, 'pval': pval, 'p_adj': p_adj, 'rejected': rejected})
             self.results[str(c)] = result_df
-            self.selected_feats[np.logical_not(rejected)] = True
+            self.selected_feats[rejected] = True
+
+        self.expected_shape = X.shape
 
     def transform(self, X):
         """
@@ -183,6 +185,8 @@ class DiffExpTransform():
 
         if self.expected_shape is None:
             raise ValueError('self.expected_shape is None, run fit method before calling transform')
+        elif np.all(np.logical_not(self.selected_feats)):
+            raise ValueError('all entries in self.selected_feats false. possible that features are not differential between classes')
 
         self.check_X_(X)
         X_subs = X[:, self.selected_feats]
