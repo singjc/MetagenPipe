@@ -8,7 +8,7 @@ rule sra_download:
     output:
         check=temp(touch("sra_download.done"))
     params:
-        output_dir="/project/data/raw/SRA/"
+        output_dir="/project/data/raw/SRA/",
         extra_args="-I --gzip --split-files"
     log:
         "logs/sra_download.log"

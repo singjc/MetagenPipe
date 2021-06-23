@@ -9,7 +9,7 @@ conda activate microbiome
 
 top_results_dir="results"
 log_dir="logs"
-archive_results=0
+archive_results=1
 timestamp=$(date +"%Y_%b_%d_%H_%M_%S")
 
 top_archive_results_dir="archive"
@@ -45,7 +45,7 @@ fi
 # SRA Download Workflow
 #snakemake --snakefile Snakefile.sradownload_wf -j 2
 
-#snakemake --snakefile Snakefile.sradownload_subs_wf -j 1
+snakemake --snakefile Snakefile.sradownload_subs_wf -j 1
 
 # Preprocessing Workflow
 
@@ -71,6 +71,6 @@ fi
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=29 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed29" reads_subsample=10000
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=93 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed93" reads_subsample=10000
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=87 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed87" reads_subsample=10000
-snakemake --snakefile Snakefile.papermill_compile_wf -j 1
+# snakemake --snakefile Snakefile.papermill_compile_wf -j 1
 
 conda deactivate
