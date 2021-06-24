@@ -96,15 +96,28 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthr
     # Check to see if data is paired end
     if paired_end:
         click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Paired end mode selected, pairing fastq files..." )
-        file_names_prefix = list(set([ re.match(r'^(\w+)_([12]).*', os.path.basename(file)).group(1) for file in list(fastq_files) ]))
+        pe_regex = r'_([12]).fastq(.gz)*$'
+        r1_regex = r'_(1).fastq(.gz)*$'
+        r2_regex = r'_(2).fastq(.gz)*$'
+        file_names_prefix = list(set([ re.sub(pe_regex, '', os.path.basename(file)) for file in list(fastq_files) ]))
         tmp_fastq_files_pair_1 = []
         tmp_fastq_files_pair_2 = []
         for file_prefix in file_names_prefix:
             file_pair = [file for file in list(fastq_files) if file_prefix in file]
-            tmp_fastq_files_pair_1.append( [ re.match(r'.*\w+_[1].*', file)[0] for file in list(file_pair) if re.match(r'.*\w+_[1].*', file) is not None ][0] )
-            tmp_fastq_files_pair_2.append( [ re.match(r'.*\w+_[2].*', file)[0] for file in list(file_pair) if re.match(r'.*\w+_[2].*', file) is not None ][0] )
+            try:
+                assert len(file_pair) == 2
+            except:
+                raise Exception('for file_prefix {} there are more or less than 2 associated files'.format(file_prefix))
+            tmp_fastq_files_pair_1.append( [ file for file in list(file_pair) if re.search(r1_regex, file) is not None ][0] )
+            tmp_fastq_files_pair_2.append( [ file for file in list(file_pair) if re.search(r2_regex, file) is not None ][0] )
         #print(f"1: {tmp_fastq_files_pair_1}\n2: {tmp_fastq_files_pair_2}")
         fastq_files = tmp_fastq_files_pair_1
+        try:
+            assert len(fastq_files) == 2*len(tmp_fastq_files_pair_2)
+            assert len(fastq_files) == 2*len(tmp_fastq_files_pair_1)
+        except:
+            raise Exception('Not all fastq files have mate pair OR not all fastq files represented in determined paired files')
+
     else:
         tmp_fastq_files_pair_2 = [None] * len(fastq_files)
     # Prepare args for parallel processing
