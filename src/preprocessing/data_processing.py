@@ -87,7 +87,15 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
     ## Check if fastq file is compressed
     fastq_file, fastq_archive, root = fastq_file_process_check ( fastq_file )
     ## Generate subsampled filename to write to
-    fastq_subsampled_file = os.path.basename(root) + "_seqt.subsampled"
+    base_name = os.path.basename(root)
+    pe_regex = '_[1-2]$'
+    pe_match = re.search(pe_regex, base_name)
+    pe_suffix = ''
+    if pe_match:
+        click.echo(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: File {fastq_file} recognized as paired end, keeping paired end suffix")
+        pe_suffix += pe_match.group(0)
+        base_name = re.sub(pe_regex, '', base_name)
+    fastq_subsampled_file = base_name + "_seqt.subsampled" + pe_suffix
     ## Add file tag denoting subsampled file with x seed and n fraction
     if add_file_tag:
         fastq_subsampled_file + "_seed_" + str(round(rng_seed)) + "_fraction_" + str(round(subsample_fraction))
