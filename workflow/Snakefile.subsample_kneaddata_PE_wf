@@ -4,10 +4,10 @@ import os
 
 # setup params, inputs
 raw_data_dir = config["raw_data_dir"]
-run_ids, = glob_wildcards(raw_data_dir + "/{run}.fastq")
+run_ids = glob_wildcards(raw_data_dir + "/{run}.fastq")
 # run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
-read_mate, = ["1", "2"]
+read_mate = ["1", "2"]
 master_output_dir=config["master_output_dir"]
 reads_subsample=config["reads_subsample"]
 seqtk_seed=config["seqtk_seed"]
@@ -22,9 +22,9 @@ rule all:
 
 rule subsample_fastq:
 	input:
-		fastq = expand("/project/data/raw/SRA/{run}_{read_mate}.fastq", run=run_ids)
+		fastq = expand("/project/data/raw/SRA/{run}_{read_mate}.fastq", run=run_ids, read_mate=read_mate)
 	output:
-		subsampled_fastq = expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_{read_mate}.fastq", run=run_ids, master_output_dir=master_output_dir)
+		subsampled_fastq = expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)
 	params:
 		subsample_fraction=reads_subsample,
 		output_dir=expand("{master_output_dir}/raw_subsampled/", master_output_dir=master_output_dir),
