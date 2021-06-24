@@ -105,16 +105,20 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthr
         for file_prefix in file_names_prefix:
             file_pair = [file for file in list(fastq_files) if file_prefix in file]
             try:
+                # assert that each file pair is actually a pair
                 assert len(file_pair) == 2
             except:
                 raise Exception('for file_prefix {} there are more or less than 2 associated files'.format(file_prefix))
             tmp_fastq_files_pair_1.append( [ file for file in list(file_pair) if re.search(r1_regex, file) is not None ][0] )
             tmp_fastq_files_pair_2.append( [ file for file in list(file_pair) if re.search(r2_regex, file) is not None ][0] )
         #print(f"1: {tmp_fastq_files_pair_1}\n2: {tmp_fastq_files_pair_2}")
+        # preserve number of fastq files before reassignment
+        no_fastq = len(fastq_files)
         fastq_files = tmp_fastq_files_pair_1
         try:
-            assert len(fastq_files) == 2*len(tmp_fastq_files_pair_2)
-            assert len(fastq_files) == 2*len(tmp_fastq_files_pair_1)
+            # total number of fastq files should be 2x any of the read pairs
+            assert no_fastq == 2*len(tmp_fastq_files_pair_2)
+            assert no_fastq == 2*len(tmp_fastq_files_pair_1)
         except:
             raise Exception('Not all fastq files have mate pair OR not all fastq files represented in determined paired files')
 
