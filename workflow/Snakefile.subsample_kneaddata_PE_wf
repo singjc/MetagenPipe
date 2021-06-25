@@ -4,9 +4,10 @@ import os
 
 # setup params, inputs
 raw_data_dir = config["raw_data_dir"]
-run_ids, = glob_wildcards(raw_data_dir + "/{run}_1.fastq.gz")
+run_ids = glob_wildcards(raw_data_dir + "/{run}.fastq")
 # run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
+read_mate = ["1", "2"]
 master_output_dir=config["master_output_dir"]
 reads_subsample=config["reads_subsample"]
 seqtk_seed=config["seqtk_seed"]
@@ -15,19 +16,15 @@ logfile_suffix='_' + os.path.basename(master_output_dir)
 log_dir=config["log_dir"]
 
 
-
 rule all:
 	input:
-		kneaddata_r1 =  master_output_dir + "/kneadeddata/{run}_seqt.subsampled_kneaddata_paired_1.fastq"	
+		"kneaddata.done"
 
 rule subsample_fastq:
 	input:
-	    # expect every read 1 fastq file to have corresponding read2 fastq file
-		fastq1 = expand("/project/data/raw/SRA/{run}_1.fastq.gz", run=run_ids),
-		fastq2 = expand("/project/data/raw/SRA/{run}_2.fastq.gz", run=run_ids)
+		fastq = expand("/project/data/raw/SRA/{run}_{read_mate}.fastq.gz", run=run_ids, read_mate=read_mate)
 	output:
-		subsampled_fastq1 = expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_1.fastq", run=run_ids, master_output_dir=master_output_dir),
-		subsampled_fastq2 = expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_2.fastq", run=run_ids, master_output_dir=master_output_dir)
+		subsampled_fastq = expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)
 	params:
 		subsample_fraction=reads_subsample,
 		output_dir=expand("{master_output_dir}/raw_subsampled/", master_output_dir=master_output_dir),
@@ -40,33 +37,29 @@ rule subsample_fastq:
 		expand("{log_dir}/subsample_fastq{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"echo \"INFO: Running for mate 1\" &>>{log} &&"
-		"python /project/src/metagenpipe.py run-seqtk --subsample_fraction={params.subsample_fraction} --rng_seed={params.seqtk_seed} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq1} &>> {log} &&"
-		"echo \"INFO: Running for mate 2\" &>>{log} &&"
-		"python /project/src/metagenpipe.py run-seqtk --subsample_fraction={params.subsample_fraction} --rng_seed={params.seqtk_seed} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq2} &>> {log} &&"
+		"python /project/src/metagenpipe.py run-seqtk --subsample_fraction={params.subsample_fraction} --rng_seed={params.seqtk_seed} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
 
 rule kneaddata:
 	input:
-		fastq1 = master_output_dir + "/raw_subsampled/{run}_seqt.subsampled_1.fastq",
-		fastq2 =  master_output_dir + "/raw_subsampled/{run}_seqt.subsampled_2.fastq"
+		fastq = rules.subsample_fastq.output.subsampled_fastq,
 	output:
-		matched1 = master_output_dir + "/kneadeddata/{run}_seqt.subsampled_kneaddata_paired_1.fastq",
-		matched2 = master_output_dir + "/kneadeddata/{run}_seqt.subsampled_kneaddata_paired_2.fastq"
+		check=temp(touch("kneaddata.done")),
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir=expand("{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
 		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
 		nthreads=nthreads
 	threads: nthreads
-
+	#conda:
+		#"envs/kneaddata.yml"
 	log:
 		expand("{log_dir}/kneaddata{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"kneaddata -db {params.reference_db} --output {params.output_dir} --trimmomatic {params.trimmomatic} -t {params.nthreads} --input {input.fastq1} --input {input.fastq2} &>> {log} &&"
+		"python /project/src/metagenpipe.py run-kneaddata --paired_end --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
