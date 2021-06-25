@@ -15,9 +15,10 @@ logfile_suffix='_' + os.path.basename(master_output_dir)
 log_dir=config["log_dir"]
 
 
+
 rule all:
 	input:
-		"kneaddata.done"
+		kneaddata_r1 =  master_output_dir + "/kneadeddata/{run}_seqt.subsampled_kneaddata_paired_1.fastq"	
 
 rule subsample_fastq:
 	input:
@@ -49,10 +50,11 @@ rule subsample_fastq:
 
 rule kneaddata:
 	input:
-		fastq1 = expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_1.fastq", run=run_ids, master_output_dir=master_output_dir),
-		fastq2 =  expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_2.fastq", run=run_ids, master_output_dir=master_output_dir)
+		fastq1 = master_output_dir + "/raw_subsampled/{run}_seqt.subsampled_1.fastq",
+		fastq2 =  master_output_dir + "/raw_subsampled/{run}_seqt.subsampled_2.fastq"
 	output:
-		check=temp(touch("kneaddata.done")),
+		matched1 = master_output_dir + "/kneadeddata/{run}_seqt.subsampled_kneaddata_paired_1.fastq",
+		matched2 = master_output_dir + "/kneadeddata/{run}_seqt.subsampled_kneaddata_paired_2.fastq"
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir=expand("{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
