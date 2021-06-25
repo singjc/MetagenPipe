@@ -9,7 +9,7 @@ conda activate microbiome
 
 top_results_dir="results"
 log_dir="logs"
-archive_results=1
+archive_results=0
 timestamp=$(date +"%Y_%b_%d_%H_%M_%S")
 
 top_archive_results_dir="archive"
@@ -23,11 +23,15 @@ then
   if [ $archive_results -eq 1 ]
   then
     archive_results_dir="${top_archive_results_dir}/${top_results_dir}_${timestamp}"
-    echo "moving ${top_results_dir} contents to ${archived_results_dir}"
+    echo "moving ${top_results_dir} contents to ${archive_results_dir}"
     mv $top_results_dir $archive_results_dir
   fi
-else
-  mkdir $top_results_dir
+fi
+
+if [ ! -d $top_results_dir ]
+then
+	echo "making top results directory"
+	mkdir $top_results_dir
 fi
 
 if [ -d $log_dir ]
@@ -47,7 +51,7 @@ fi
 
 # Preprocessing Workflow
 
-snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=50000
+snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=50000
 
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 # to unlock directory
