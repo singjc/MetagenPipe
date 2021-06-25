@@ -216,7 +216,7 @@ def run_kraken2( inp_files, db_use, output_dir, nthreads, paired_end ):
         freq_file_output = os.path.join(output_dir, prefix_i + '_freq_output.txt')
         exit_code = kraken2_call(fastq1=fastq1, fastq2=fastq2, db_use=db_use, reads_file=read_file_output, freq_file=freq_file_output, nthreads=nthreads)
         if not exit_code == 0:
-            warn('kraken2 returned exit code {0} for file {1}'.format(exit_code, f))
+            warn('kraken2 returned exit code {0} for file(s) fastq1: {1} fastq2: {2}'.format(exit_code, fastq1, str(fastq2)))
 
 
 @cli.command()
