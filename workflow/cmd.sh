@@ -9,7 +9,7 @@ conda activate microbiome
 
 top_results_dir="results"
 log_dir="logs"
-archive_results=0
+archive_results=1
 timestamp=$(date +"%Y_%b_%d_%H_%M_%S")
 
 top_archive_results_dir="archive"
@@ -23,11 +23,15 @@ then
   if [ $archive_results -eq 1 ]
   then
     archive_results_dir="${top_archive_results_dir}/${top_results_dir}_${timestamp}"
-    echo "moving ${top_results_dir} contents to ${archived_results_dir}"
+    echo "moving ${top_results_dir} contents to ${archive_results_dir}"
     mv $top_results_dir $archive_results_dir
   fi
-else
-  mkdir $top_results_dir
+fi
+
+if [ ! -d $top_results_dir ]
+then
+	echo "making top results directory"
+	mkdir $top_results_dir
 fi
 
 if [ -d $log_dir ]
@@ -45,13 +49,16 @@ fi
 # SRA Download Workflow
 #snakemake --snakefile Snakefile.sradownload_wf -j 2
 
-#snakemake --snakefile Snakefile.sradownload_subs_wf -j 1
-
 # Preprocessing Workflow
 
+# snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=50000
+snakemake --snakefile Snakefile.subsample_kraken2_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_PE" reads_subsample=50000
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 # to unlock directory
 # snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True
+
+# snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
+
 # to run at various depths
 
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
@@ -71,6 +78,8 @@ fi
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=29 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed29" reads_subsample=10000
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=93 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed93" reads_subsample=10000
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=87 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed87" reads_subsample=10000
-snakemake --snakefile Snakefile.papermill_compile_wf -j 1
+
+# machine learning notebook workflow automated through papermill
+# snakemake --snakefile Snakefile.papermill_compile_wf -j 1
 
 conda deactivate

@@ -8,16 +8,17 @@ rule sra_download:
     output:
         check=temp(touch("sra_download.done"))
     params:
-        output_dir="/project/data/raw/SRA/"
+        output_dir="/project/data/raw/SRA/",
+        extra_args="-I --gzip --split-files"
     log:
         "logs/sra_download.log"
     shell:
         "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
         "echo \"INFO: Getting accessions...\" &>> {log} && "
-        """echo \"INFO: Downloading $(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n 20 | sort | wc -l) accessions...\"  &>> {log} &&"""
-        """accessions=$(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n 20 | sort)  && """
+        """echo \"INFO: Downloading $(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n 2 | sort | wc -l) accessions...\"  &>> {log} &&"""
+        """accessions=$(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n 2 | sort)  && """
         #"vdb-config --interactive &&"
-        "python -u /project/src/SRADownLoad.py -E $accessions -d {params.output_dir} -X False -s True &>> {log} && "
+        "python /project/src/metagenpipe.py sra-downloader --download_dir={params.output_dir} --extra_args=\"{params.extra_args}\" $accessions  &>> {log} && "
         "end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
         "echo \"INFO: Process started on $start_dt\" &>> {log} && "
         "echo \"INFO: Process finished on $end_dt\" &>> {log}"

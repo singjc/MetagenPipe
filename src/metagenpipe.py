@@ -69,6 +69,50 @@ def run_seqtk( fastq_files, subsample_fraction, output_dir, two_pass_mode, rng_s
     pool.close()
     pool.join()
 
+def handle_paired_end( fastq_files ):
+    """
+    Divide paired end fastq files into two lists
+    :param fastq_files: fastq files.
+    :return: two lists of fastq files, first corresponding to first mate, second corresponding to second mate, and list of file prefixes
+    """
+
+    pe_regex = r'_([12]).fastq(.gz)*$'
+    r1_regex = r'_(1).fastq(.gz)*$'
+    r2_regex = r'_(2).fastq(.gz)*$'
+    file_names_prefix = list(set([re.sub(pe_regex, '', os.path.basename(file)) for file in list(fastq_files)]))
+    tmp_fastq_files_pair_1 = []
+    tmp_fastq_files_pair_2 = []
+    for file_prefix in file_names_prefix:
+        file_pair = [file for file in list(fastq_files) if file_prefix in file]
+        r1_matches = [file for file in list(file_pair) if re.search(r1_regex, file) is not None]
+        r2_matches = [file for file in list(file_pair) if re.search(r2_regex, file) is not None]
+        try:
+            # assert that each file pair is actually a pair
+            assert len(file_pair) == 2
+        except:
+            raise Exception('for file_prefix {} there are more or less than 2 associated files'.format(file_prefix))
+
+        try:
+            assert len(r1_matches) == 1
+            assert len(r2_matches) == 1
+        except:
+            raise Exception('for file_prefix {} expect 1 match for read1 and read2. got {} (read1) and {} (read2)'.format(file_prefix, len(r1_matches), len(r2_matches)))
+
+        tmp_fastq_files_pair_1.append(r1_matches[0])
+        tmp_fastq_files_pair_2.append(r2_matches[0])
+    # print(f"1: {tmp_fastq_files_pair_1}\n2: {tmp_fastq_files_pair_2}")
+    # preserve number of fastq files before reassignment
+    no_fastq = len(fastq_files)
+    try:
+        # total number of fastq files should be 2x any of the read pairs
+        assert no_fastq == 2 * len(tmp_fastq_files_pair_2)
+        assert no_fastq == 2 * len(tmp_fastq_files_pair_1)
+    except:
+        raise Exception('Not all fastq files have mate pair OR not all fastq files represented in determined paired files')
+
+    return tmp_fastq_files_pair_1, tmp_fastq_files_pair_2, file_names_prefix
+
+
 # Main Data Kneading with kneaddata
 @cli.command(name='run-kneaddata', context_settings=dict(
     ignore_unknown_options=True,
@@ -96,15 +140,10 @@ def run_kneaddata( ctx, fastq_files, reference_db, output_dir, trimmomatic, nthr
     # Check to see if data is paired end
     if paired_end:
         click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Paired end mode selected, pairing fastq files..." )
-        file_names_prefix = list(set([ re.match(r'^(\w+)_([12]).*', os.path.basename(file)).group(1) for file in list(fastq_files) ]))
-        tmp_fastq_files_pair_1 = []
-        tmp_fastq_files_pair_2 = []
-        for file_prefix in file_names_prefix:
-            file_pair = [file for file in list(fastq_files) if file_prefix in file]
-            tmp_fastq_files_pair_1.append( [ re.match(r'.*\w+_[1].*', file)[0] for file in list(file_pair) if re.match(r'.*\w+_[1].*', file) is not None ][0] )
-            tmp_fastq_files_pair_2.append( [ re.match(r'.*\w+_[2].*', file)[0] for file in list(file_pair) if re.match(r'.*\w+_[2].*', file) is not None ][0] )
-        #print(f"1: {tmp_fastq_files_pair_1}\n2: {tmp_fastq_files_pair_2}")
+        # below function splits fastq files by mate
+        tmp_fastq_files_pair_1, tmp_fastq_files_pair_2, _ = handle_paired_end(fastq_files)
         fastq_files = tmp_fastq_files_pair_1
+
     else:
         tmp_fastq_files_pair_2 = [None] * len(fastq_files)
     # Prepare args for parallel processing
@@ -149,7 +188,8 @@ def run_metaphlan( inp_files, input_type, output_dir_bowtie, output_dir_profile,
 @click.option('--db_use', default=None, show_default=True, type=str, help='kraken2 database to use')
 @click.option('--output_dir', default='./', show_default=True, type=str, help='output directory for files')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
-def run_kraken2( inp_files, db_use, output_dir, nthreads ):
+@click.option('--paired_end', default=False, show_default=True, type=bool, help='Paired end fastq input, True or False')
+def run_kraken2( inp_files, db_use, output_dir, nthreads, paired_end ):
     '''
     Main function call to process the data with metaphlan
     '''
@@ -159,14 +199,24 @@ def run_kraken2( inp_files, db_use, output_dir, nthreads ):
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
-    for f in inp_files:
-        base_name = os.path.basename(f)
-        root = re.sub('\\.[A-z]*$', '', base_name)
-        read_file_output = os.path.join(output_dir, root + '_read_output.txt')
-        freq_file_output = os.path.join(output_dir, root + '_freq_output.txt')
-        exit_code = kraken2_call(f, db_use=db_use, reads_file=read_file_output, freq_file=freq_file_output, nthreads=nthreads)
+    if paired_end:
+        click.echo( f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: Paired end mode selected, pairing fastq files..." )
+        # below function splits fastq files by mate
+        fastq1_files, fastq2_files, prefixes = handle_paired_end(inp_files)
+    else:
+        fastq1_files = inp_files
+        fastq2_files = [None] * len(inp_files)
+        prefixes = [re.sub('\\.[A-z]*$', '', os.path.basename(x)) for x in fastq1_files]
+
+    for i in range(len(fastq1_files)):
+        fastq1 = fastq1_files[i]
+        fastq2 = fastq2_files[i]
+        prefix_i = prefixes[i]
+        read_file_output = os.path.join(output_dir, prefix_i + '_read_output.txt')
+        freq_file_output = os.path.join(output_dir, prefix_i + '_freq_output.txt')
+        exit_code = kraken2_call(fastq1=fastq1, fastq2=fastq2, db_use=db_use, reads_file=read_file_output, freq_file=freq_file_output, nthreads=nthreads)
         if not exit_code == 0:
-            warn('kraken2 returned exit code {0} for file {1}'.format(exit_code, f))
+            warn('kraken2 returned exit code {0} for file(s) fastq1: {1} fastq2: {2}'.format(exit_code, fastq1, str(fastq2)))
 
 
 @cli.command()
