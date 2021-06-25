@@ -51,8 +51,8 @@ fi
 
 # Preprocessing Workflow
 
-snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=50000
-
+# snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=50000
+snakemake --snakefile Snakefile.subsample_kraken2_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_PE" reads_subsample=50000
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 # to unlock directory
 # snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True

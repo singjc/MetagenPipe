@@ -47,7 +47,7 @@ rule kneaddata:
 		fastq = rules.subsample_fastq.output.subsampled_fastq,
 	output:
 		check=temp(touch("kneaddata.done")),
-		fastq=expand("{master_output_dir}/kneaddata/{run}_seqt.subsampled_1_kneaddata_paired_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)
+		fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir=expand("{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
@@ -70,8 +70,8 @@ rule kraken2:
 		fastq=rules.kneaddata.output.fastq
 	output:
 		check=temp(touch("kraken2.done")),
-		read_files = expand("{master_output_dir}/kraken2/{run}_seqt.subsampled_kneaddata_read_output.txt", run=run_ids, master_output_dir=master_output_dir),
-		freq_files = expand("{master_output_dir}/kraken2/{run}_seqt.subsampled_kneaddata_freq_output.txt", run=run_ids, master_output_dir=master_output_dir)
+		read_files = expand("{master_output_dir}/kraken2/{run}_seqt.subsampled_1_kneaddata_paired_read_output.txt", run=run_ids, master_output_dir=master_output_dir),
+		freq_files = expand("{master_output_dir}/kraken2/{run}_seqt.subsampled_1_kneaddata_paired_freq_output.txt", run=run_ids, master_output_dir=master_output_dir)
 	params:
 		input_type="fastq",
 		output_dir=expand("{master_output_dir}/kraken2", master_output_dir=master_output_dir),
