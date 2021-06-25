@@ -87,7 +87,15 @@ def seqtk_call( fastq_file, subsample_fraction, output_dir=(os.getcwd()+"/raw_su
     ## Check if fastq file is compressed
     fastq_file, fastq_archive, root = fastq_file_process_check ( fastq_file )
     ## Generate subsampled filename to write to
-    fastq_subsampled_file = os.path.basename(root) + "_seqt.subsampled"
+    base_name = os.path.basename(root)
+    pe_regex = '_[1-2]$'
+    pe_match = re.search(pe_regex, base_name)
+    pe_suffix = ''
+    if pe_match:
+        click.echo(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: File {fastq_file} recognized as paired end, keeping paired end suffix")
+        pe_suffix += pe_match.group(0)
+        base_name = re.sub(pe_regex, '', base_name)
+    fastq_subsampled_file = base_name + "_seqt.subsampled" + pe_suffix
     ## Add file tag denoting subsampled file with x seed and n fraction
     if add_file_tag:
         fastq_subsampled_file + "_seed_" + str(round(rng_seed)) + "_fraction_" + str(round(subsample_fraction))
@@ -244,17 +252,22 @@ def parse_metaphlan_file( input_file ):
 
     return pd_df_out
 
-def kraken2_call( input_file, db_use, reads_file, freq_file, nthreads=1 ):
+def kraken2_call( fastq1, db_use, reads_file, freq_file, nthreads=1, fastq2=None ):
     """
     System Call to Kraken2
-    :param input_file: fastq file
+    :param fastq1: fastq file
     :param db_use: kraken2 database
     :param reads_file: file written to in --output flag for kraken2. contains annotated reads
     :param freq_file: file written to in --report flag for kraken2. contains taxa frequencies
-    :param n_threads: number of threads to use
+    :param nthreads: number of threads to use
+    :param fastq2: if None, run in single end mode. if not None, run in paired end mode
     :return: exit status for system call
     """
-    cmd = 'kraken2 --db {0} --output {1} --report {2} --threads {3} {4}'.format(db_use, reads_file, freq_file, nthreads, input_file)
+    if fastq2 is not None:
+        cmd = 'kraken2 --paired --db {0} --output {1} --report {2} --threads {3} {4} {5}'.format(db_use, reads_file, freq_file, nthreads, fastq1, fastq2)
+    else:
+        cmd = 'kraken2 --db {0} --output {1} --report {2} --threads {3} {4}'.format(db_use, reads_file, freq_file, nthreads, fastq1)
+
     exit_status = os.system(cmd)
     return exit_status
 
