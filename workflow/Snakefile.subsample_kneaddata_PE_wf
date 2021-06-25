@@ -4,7 +4,7 @@ import os
 
 # setup params, inputs
 raw_data_dir = config["raw_data_dir"]
-run_ids = glob_wildcards(raw_data_dir + "/{run}.fastq")
+run_ids, = glob_wildcards(raw_data_dir + "/{run}_1.fastq.gz")
 # run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
 #run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
 read_mate = ["1", "2"]
