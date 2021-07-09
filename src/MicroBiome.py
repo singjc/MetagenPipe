@@ -201,16 +201,21 @@ class list_transformer():
     def __init__(self, transforms=[]):
         self.transforms = transforms
         
-    def check(self, X):
+    def check(self, X, y=None):
         if not isinstance(X, list):
             raise TypeError('X must be a list')
         if not len(self.transforms) == len(X):
             raise ValueError('X must have same number of elements as transforms')
             
-    def fit(self, X):
-        
+    def fit(self, X, y=None):
+        # NOTE: y is not directly passed to any fit method. if you plan to pass y to a fit method,
+        # e.g. for a differential expression based feature selector,
+        # write a transformer-like object that takes a tuple as input that serves as a wrapper
+        # around a fit method that takes X and y.
+        self.check(X, y)
         for i in range(len(self.transforms)):
-            self.transforms[i].fit(X[i])
+            # enforce that None is passed for y
+            self.transforms[i].fit(X[i], None)
             
     def transform(self, X):
         """
@@ -221,10 +226,11 @@ class list_transformer():
         X_cat = None
         
         for i in range(len(self.transforms)):
+            X_transf = self.transforms[i].transform(X[i])
             if i == 0:
-                X_cat = self.transforms[i].transform(X[i])
+                X_cat = X_transf
             else:
-                X_cat = np.concatenate((X_cat, X[i]), axis=1)
+                X_cat = np.concatenate((X_cat, X_transf), axis=1)
                 
         return X_cat
             
