@@ -208,14 +208,10 @@ class list_transformer():
             raise ValueError('X must have same number of elements as transforms')
             
     def fit(self, X, y=None):
-        # NOTE: y is not directly passed to any fit method. if you plan to pass y to a fit method,
-        # e.g. for a differential expression based feature selector,
-        # write a transformer-like object that takes a tuple as input that serves as a wrapper
-        # around a fit method that takes X and y.
+        # Note: same y is passed for various transforms in list
         self.check(X, y)
         for i in range(len(self.transforms)):
-            # enforce that None is passed for y
-            self.transforms[i].fit(X[i], None)
+            self.transforms[i].fit(X[i], y)
             
     def transform(self, X):
         """
