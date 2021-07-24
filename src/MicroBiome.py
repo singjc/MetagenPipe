@@ -211,7 +211,10 @@ class list_transformer():
         # Note: same y is passed for various transforms in list
         self.check(X, y)
         for i in range(len(self.transforms)):
-            self.transforms[i].fit(X[i], y)
+            if self.transforms[i] is not None:
+                self.transforms[i].fit(X[i], y)
+            else:
+                continue
             
     def transform(self, X):
         """
@@ -222,7 +225,12 @@ class list_transformer():
         X_cat = None
         
         for i in range(len(self.transforms)):
-            X_transf = self.transforms[i].transform(X[i])
+            
+            if self.transforms[i] is not None :
+                X_transf = self.transforms[i].transform(X[i]).copy()
+            else:
+                X_transf = X[i]
+            
             if i == 0:
                 X_cat = X_transf
             else:
