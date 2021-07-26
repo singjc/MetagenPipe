@@ -4,6 +4,7 @@ from sklearn import model_selection
 import copy
 from vizwiz import VizWiz
 from scipy.stats import ttest_ind as ttest
+from scipy.stats import pearsonr, spearmanr, fisher_exact
 from statsmodels.stats.multitest import fdrcorrection
 from sklearn.pipeline import Pipeline
 
@@ -108,18 +109,16 @@ class MicroBiomeDataSet:
             raise ValueError('item_return should not be None')
         
         return item_return
-
-class DiffExpTransform():
+    
+class StatsTransform():
     """
-    Apply Differential Abundance Analysis to 2 or more groups. Transformer-like object
-
+    Base class for statistics based transforms. 
     attributes:
         selected_feats = indicator vector for features selected for further
-        results = dict of differential abundance results. T-test is performed comparing in class samples to
-            out of class samples. T-statistic will be positive if mean of in-class set is greater than mean
-            of out of class set
+        results = dict containing results of statistical analysis. 
         fdr = false discovery rate
     """
+    
     def __init__(self, fdr=0.05):
         self.selected_feats = None
         self.results = {}
@@ -138,7 +137,32 @@ class DiffExpTransform():
                 assert X.shape[1] == self.expected_shape[1]
             except:
                 raise ValueError("Expect X to have {} features, input has shape {}".format(self.expected_shape[1], X.shape))
+                
+    def fit(self, X, y):
+        """
+        Any subclass should implement a method 'fit' where a null hypothesis is evaluated given the provided data,
+        for each feature in X. 
+        """
+        pass
+    
 
+class DiffExpTransform(StatsTransform):
+    """
+    Apply Differential Abundance Analysis to 2 or more groups. Transformer-like object
+
+    attributes:
+        selected_feats = indicator vector for features selected for further
+        results = dict of differential abundance results. T-test is performed comparing in class samples to
+            out of class samples. T-statistic will be positive if mean of in-class set is greater than mean
+            of out of class set
+        fdr = false discovery rate
+    """
+    def __init__(self, fdr=0.05):
+        """
+        initialize transform
+        """
+        super().__init__(fdr)
+        
     def check_Y_(self, y):
 
         try:
@@ -151,7 +175,7 @@ class DiffExpTransform():
         except:
             raise ValueError("expect y to be integer or string")
 
-    def fit(self, X, y, **fit_params):
+    def fit(self, X, y):
         """
 
         :param X: m x n matrix of values
@@ -161,6 +185,11 @@ class DiffExpTransform():
 
         self.check_X_(X)
         self.check_Y_(y)
+        try:
+            assert X.shape[0] == len(y)
+        except:
+            raise ValueError('Expect X dim 1 to be equal to y length')
+            
         y_classes = np.sort(np.unique(y))
         self.selected_feats = np.zeros((X.shape[1],)).astype('bool')
 
@@ -193,6 +222,121 @@ class DiffExpTransform():
         X_subs = X[:, self.selected_feats]
         return X_subs
 
+
+class CorTransform(StatsTransform):
+    """
+    Apply Pearson or Spearman Correlation analysis comparing input variables to a target variable
+    """
+    
+    def __init__(self, fdr=0.05, metric='pearson'):
+        """
+        initialize transform
+        """
+        super().__init__(fdr)
+        if metric == 'pearson':
+            self.cor_func = pearsonr
+        elif metric == 'spearman':
+            self.cor_func = spearmanr
+        else:
+            raise ValueError('metric must be one of {pearson, spearman}')
+        
+    def check_Y_(self, y):
+
+        try:
+            assert len(y.shape) == 1
+        except:
+            raise ValueError("expect y to be 1D array. y has shape {}".format(y.shape))
+
+        try:
+            assert (np.issubdtype(y.dtype, np.integer) | np.issubdtype(y.dtype, np.str_))
+        except:
+            raise ValueError("expect y to be integer or string")
+
+    def fit(self, X, y, **kwargs):
+        """
+
+        :param X: m x n matrix of values
+        :param y: vector of length m, denoting 2 or more classes
+        :return: object is modified with selected features
+        """
+
+        self.check_X_(X)
+        self.check_Y_(y)
+        try:
+            assert X.shape[0] == len(y)
+        except:
+            raise ValueError('Expect X dim 1 to be equal to y length')
+            
+        self.selected_feats = np.zeros((X.shape[1],)).astype('bool')
+        rho = np.repeat(np.nan, len(y))
+        pval = np.repeat(np.nan, len(y))
+        for i in range(0, len(y)):
+            rho_i, pval_i = self.cor_func(X[:, i].flatten(), y, **kwargs)
+            rho[i] = rho_i
+            pval[i] = pval_i
+            
+        rejected, p_adj = fdrcorrection(pval, alpha=self.fdr)
+        result_df = pd.DataFrame({'r': rho, 'pval': pval, 'p_adj': p_adj, 'rejected': rejected})
+        self.results['results'] = result_df
+        self.selected_feats[rejected] = True
+        self.expected_shape = X.shape
+        return self
+
+    def transform(self, X):
+        """
+
+        :param X: m x n matrix of values
+        :return: X, subsetted for only features of interest
+        """
+
+        if self.expected_shape is None:
+            raise ValueError('self.expected_shape is None, run fit method before calling transform')
+        elif np.all(np.logical_not(self.selected_feats)):
+            raise ValueError('all entries in self.selected_feats false. possible that features are not differential between classes')
+
+        self.check_X_(X)
+        X_subs = X[:, self.selected_feats]
+        return X_subs
+    
+def fisher_test_vect(x1, x2, x1_pos=None, x2_pos=None, verbose=True, **kwargs):
+    """
+    Perform fisher's exact test on 2 vectors, expected to be binary
+    
+    Note: you can pass non-boolean arrays, including those with more than 2 categories, but a 'positive' class must be
+    specified for the array
+    
+    :param x1: vector1, a numpy ndarray
+    :param x2: vector 2, a numpy ndarray
+    :param x1_pos: class to consider positive class in x1. Must not be None if x1 not boolean ndarray
+    :param x2_pos: class to consider positive class in x2. Must not be None if x2 not boolean ndarray
+    :param **kwargs: kwargs passed to fisher_exact
+    :return: fisher's exact test result
+    """
+    def process_x(x, pos_val, name):
+        if pos_val is not None:
+            x = x == pos_val
+        else:
+            try:
+                assert x.dtype is np.dtype('bool')
+            except:
+                raise ValueError('{} must have positive value specified if not bool'.format(name))
+        return x
+    x1 = process_x(x1, x1_pos, 'x1')
+    x2 = process_x(x2, x2_pos, 'x2')
+    TT = np.sum(np.logical_and(x1, x2).astype('int32'))
+    TF = np.sum(np.logical_and(x1, np.logical_not(x2)).astype('int32'))
+    FT = np.sum(np.logical_and(np.logical_not(x1), x2).astype('int32'))
+    FF = np.sum(np.logical_and(np.logical_not(x1), np.logical_not(x2)).astype('int32'))
+    cont_tab = np.array([[TT, TF], [FT, FF]])
+    oddsratio, pval = fisher_exact(cont_tab, **kwargs)
+    
+    if verbose:
+        print('contingency table')
+        print(cont_tab)
+        print('odds ratio: {}; pval {}'.format(oddsratio, pval))
+    
+    return cont_tab, oddsratio, pval
+    
             
 class list_transformer():
     """
@@ -211,7 +355,10 @@ class list_transformer():
         # Note: same y is passed for various transforms in list
         self.check(X, y)
         for i in range(len(self.transforms)):
-            self.transforms[i].fit(X[i], y)
+            if self.transforms[i] is not None:
+                self.transforms[i].fit(X[i], y)
+            else:
+                continue
             
     def transform(self, X):
         """
@@ -222,81 +369,18 @@ class list_transformer():
         X_cat = None
         
         for i in range(len(self.transforms)):
-            X_transf = self.transforms[i].transform(X[i])
+            
+            if self.transforms[i] is not None :
+                X_transf = self.transforms[i].transform(X[i]).copy()
+            else:
+                X_transf = X[i]
+            
             if i == 0:
                 X_cat = X_transf
             else:
                 X_cat = np.concatenate((X_cat, X_transf), axis=1)
                 
         return X_cat
-            
-        
-# class transformer_X():
-#     """
-#     Transform a list of microbiome and clinical data
-#     """
-#     def __init__(self, use_PCA=True, n_components=30):
-#         self.microbiome_scaler = StandardScaler()
-#         self.microbiome_PCA = PCA(n_components=n_components)
-#         self.PCA_scaler = StandardScaler()
-#         self.clinical_scaler = StandardScaler()
-#         self.use_PCA = use_PCA
-        
-#     def fit(self, DataList):
-#         """
-#         params:
-#             DataList = list of 3 arrays, 1 (index 0) expected to be microbiome data, 2 (index 1) expected to be continuous
-#             clinical data, 3 (index 2) expected to be binary clinical data. 
-#         Note:
-#             You should sort all clinical data by binary status if you would like the order of varianbles preserved for clinical
-#             data. If PCA is run, first n_components variables are standard normalized PCA values, all variables after that are
-#             from elements 2 and 3 of DataList.
-#         """
-#         MBiomeX = DataList[0]
-#         ClinicalContinousX = DataList[1]
-#         ClinicalBinaryX = DataList[2]
-#         MBiomeX = self.microbiome_scaler.fit_transform(MBiomeX)
-        
-#         if self.use_PCA:
-#             MBiomeX = self.microbiome_PCA.fit_transform(MBiomeX)
-#             MBiomeX = self.microbiome_PCA.fit_transform(MBiomeX)
-            
-#         if not ClinicalContinousX is None:
-#             ClinicalContinousX = self.clinical_scaler.fit_transform(ClinicalContinousX)
-#             XFinal = np.concatenate((MBiomeX, ClinicalContinousX), axis=1)
-#         else:
-#             XFinal = MBiomeX
-        
-#     def transform(self, DataList):
-#         """
-#         params:
-#             DataList = list of 3 arrays, 1 (index 0) expected to be microbiome data, 2 (index 1) expected to be continuous
-#             clinical data, 3 (index 2) expected to be binary clinical data. 
-#         Note:
-#             You should sort all clinical data by binary status if you would like the order of varianbles preserved for clinical
-#             data. If PCA is run, first n_components variables are standard normalized PCA values, all variables after that are
-#             from elements 2 and 3 of DataList.
-#         """
-        
-#         MBiomeX = DataList[0]
-#         ClinicalContinousX = DataList[1]
-#         ClinicalBinaryX = DataList[2]
-        
-#         MBiomeX = self.microbiome_scaler.transform(MBiomeX)
-        
-#         if self.use_PCA:
-#             MBiomeX = self.microbiome_PCA.transform(MBiomeX)
-            
-#         if not ClinicalContinousX is None:
-#             ClinicalContinousX = self.clinical_scaler.transform(ClinicalContinousX)
-#             XFinal = np.concatenate((MBiomeX, ClinicalContinousX), axis=1)
-#         else:
-#             XFinal = MBiomeX
-        
-#         if not ClinicalBinaryX is None:
-#             XFinal = np.concatenate((XFinal, ClinicalBinaryX), axis=1)
-        
-#         return XFinal
         
         
 class Trainer:
