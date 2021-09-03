@@ -6,7 +6,6 @@ from vizwiz import VizWiz
 from scipy.stats import ttest_ind as ttest
 from scipy.stats import pearsonr, spearmanr, fisher_exact
 from statsmodels.stats.multitest import fdrcorrection
-from sklearn.pipeline import Pipeline
 
 # Define class for indexing data
 class MicroBiomeDataSet:
@@ -114,7 +113,7 @@ class StatsTransform():
     """
     Base class for statistics based transforms. 
     attributes:
-        selected_feats = indicator vector for features selected for further
+        selected_feats = indicator vector for features selected for further use
         results = dict containing results of statistical analysis. 
         fdr = false discovery rate
     """
@@ -151,7 +150,7 @@ class DiffExpTransform(StatsTransform):
     Apply Differential Abundance Analysis to 2 or more groups. Transformer-like object
 
     attributes:
-        selected_feats = indicator vector for features selected for further
+        selected_feats = indicator vector for features selected for further use
         results = dict of differential abundance results. T-test is performed comparing in class samples to
             out of class samples. T-statistic will be positive if mean of in-class set is greater than mean
             of out of class set
@@ -446,13 +445,20 @@ class Trainer:
             return None
 
         
-    def score(self, X, y, score):
+    def score(self, X, y, score, use_proba=False, pos_class=1):
         """
         X = input, untransformed
         y = output, untransformed
         score = score from sklearn metrics. e.g. balanced accuracy
+        use_proba = use probability/confidence output (i.e. predict_proba)
         """
-        y_pred = self.predict(X)
+        if use_proba:
+            # expect predict_proba to output nxc array of n samples, c columns of class probabilities
+            y_pred = self.predict_proba(X)
+            if y_pred.shape[1] == 2:
+                y_pred = y_pred[:, pos_class]
+        else:
+            y_pred = self.predict(X)
         y = self.transform_y(y)
         score_value = score(y, y_pred)
         return score_value
@@ -539,16 +545,16 @@ class TrainTester:
             # y_train_pred = np.where(y_train_pred_proba > 0.5, 1, 0)
             # y_test_pred = np.where(y_test_pred_proba > 0.5, 1, 0)
             if self.use_proba_predict:
-                if self.y_train_pred_proba is not None:
-                    print("getting predictions from probs")
-                    y_train_pred = np.argmax(y_train_pred_proba, axis=1)
-                    y_test_pred = np.argmax(y_test_pred_proba, axis=1)
-                else: 
-                    print("getting predictions from predict")
-                    y_train_pred = self.Trainer.predict(X_train)
-                    y_test_pred = self.Trainer.predict(X_test)
-                    y_train_pred = np.where(y_train_pred > 0.5, 1, 0)
-                    y_test_pred = np.where(y_test_pred > 0.5, 1, 0)
+                # if self.y_train_pred_proba is not None:
+                print("getting predictions from probs")
+                y_train_pred = np.argmax(y_train_pred_proba, axis=1)
+                y_test_pred = np.argmax(y_test_pred_proba, axis=1)
+                # else:
+                #     print("getting predictions from predict")
+                #     y_train_pred = self.Trainer.predict(X_train)
+                #     y_test_pred = self.Trainer.predict(X_test)
+                #     y_train_pred = np.where(y_train_pred > 0.5, 1, 0)
+                #     y_test_pred = np.where(y_test_pred > 0.5, 1, 0)
         else:
             y_train_pred = self.Trainer.predict(X_train)
             y_test_pred = self.Trainer.predict(X_test)
@@ -634,6 +640,3 @@ class MultiTrainTester(VizWiz):
             self.y_train_pred.append( TrainTesterCopy.y_train_pred )
             self.y_test_pred.append( TrainTesterCopy.y_test_pred )
             self.history.append( TrainTesterCopy.history )
-            
-            
-        

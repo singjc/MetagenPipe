@@ -99,3 +99,4 @@ class VizWiz:
         plt.tight_layout()
         if savefig:
             fig.savefig('roc.png')
+

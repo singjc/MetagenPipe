@@ -5,10 +5,20 @@ def AUROC_SCORE(y_true, y_pred):
     """
 
     :param y_true: true values of y
-    :param y_pred: predicted values of y
+    :param y_pred: y_pred: predicted probabilities of y
     :return: macro average of ROC AUC score (AUROC)
     """
     return metrics.roc_auc_score(y_true, y_pred, average='macro')
+
+
+def AUPRC_SCORE(y_true, y_pred):
+    """
+
+    :param y_true: true values of y
+    :param y_pred: predicted probabilities of y
+    :return: macro average of AUPRC curve
+    """
+    return metrics.average_precision_score(y_true, y_pred, average='macro')
 
 
 def SENSITIVITY_SCORE(y_true, y_pred):
