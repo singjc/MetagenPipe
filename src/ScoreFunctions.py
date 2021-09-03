@@ -1,14 +1,28 @@
 from sklearn import metrics
-
+import numpy as np
 
 def AUROC_SCORE(y_true, y_pred):
     """
 
     :param y_true: true values of y
     :param y_pred: y_pred: predicted probabilities of y
-    :return: macro average of ROC AUC score (AUROC)
+    :return: macro average of ROC AUC score (AUROC), or just AUROC if y_true is binary
     """
     return metrics.roc_auc_score(y_true, y_pred, average='macro')
+
+def AUROC_NEG(y_true, y_pred):
+    """
+
+    :param y_true: true values of y
+    :param y_pred: y_pred: predicted probabilities of y
+    :return: AUROC for negative class. expect binary input for y_true and y_pred.
+    """
+    assert np.all(np.in1d(y_true, [0, 1]))
+    assert len(y_true.shape) == 1
+    assert len(y_pred.shape) == 1
+    y_true = np.array([1], dtype='int32') - y_true
+    y_pred = np.array([1], dtype='float32') - y_pred
+    return metrics.roc_auc_score(y_true, y_pred)
 
 
 def AUPRC_SCORE(y_true, y_pred):
@@ -16,9 +30,23 @@ def AUPRC_SCORE(y_true, y_pred):
 
     :param y_true: true values of y
     :param y_pred: predicted probabilities of y
-    :return: macro average of AUPRC curve
+    :return: macro average of AUPRC curve, or just AUPRC if y_true is binary
     """
     return metrics.average_precision_score(y_true, y_pred, average='macro')
+
+def AUPRC_NEG(y_true, y_pred):
+    """
+
+    :param y_true: true values of y
+    :param y_pred: y_pred: predicted probabilities of y
+    :return: AUPRC for negative class. expect binary input for y_true and y_pred.
+    """
+    assert np.all(np.in1d(y_true, [0, 1]))
+    assert len(y_true.shape) == 1
+    assert len(y_pred.shape) == 1
+    y_true = np.array([1], dtype='int32') - y_true
+    y_pred = np.array([1], dtype='float32') - y_pred
+    return metrics.average_precision_score(y_true, y_pred)
 
 
 def SENSITIVITY_SCORE(y_true, y_pred):
