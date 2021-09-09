@@ -4,16 +4,17 @@ set -e
 #apt-get install wget
 # inetall libtbb2, bowtie2 depends on this
 apt-get install libtbb2
-# install sra toolkit
-wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.10.9/sratoolkit.2.10.9-ubuntu64.tar.gz
-tar -xvzf sratoolkit.2.10.9-ubuntu64.tar.gz
-mv sratoolkit.2.10.9-ubuntu64 /root/
-echo 'export PATH="$PATH:/root/sratoolkit.2.10.9-ubuntu64/bin"' >> /root/.bashrc
-/root/sratoolkit.2.10.9-ubuntu64/bin/vdb-config --restore-defaults
+# moved sra toolkit installation to dockerfile
+# # install sra toolkit
+# wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.10.9/sratoolkit.2.10.9-ubuntu64.tar.gz
+# tar -xvzf sratoolkit.2.10.9-ubuntu64.tar.gz
+# mv sratoolkit.2.10.9-ubuntu64 /src/
+# echo 'export PATH="$PATH:/src/sratoolkit.2.10.9-ubuntu64/bin"' >> /root/.bashrc
+# /src/sratoolkit.2.10.9-ubuntu64/bin/vdb-config --restore-defaults
 # install anaconda
 wget https://repo.anaconda.com/archive/Anaconda3-2020.11-Linux-x86_64.sh
-bash Anaconda3-2020.11-Linux-x86_64.sh -b -p /root/anaconda
-eval "$(/root/anaconda/bin/conda shell.bash hook)"
+bash Anaconda3-2020.11-Linux-x86_64.sh -b -p /src/anaconda
+eval "$(/src/anaconda/bin/conda shell.bash hook)"
 conda init
 # create microbiome environment
 conda create -n microbiome python=3.7 -y
