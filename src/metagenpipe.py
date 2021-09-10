@@ -76,9 +76,9 @@ def handle_paired_end( fastq_files ):
     :return: two lists of fastq files, first corresponding to first mate, second corresponding to second mate, and list of file prefixes
     """
     fastq_files = list(set(fastq_files))
-    pe_regex = r'_([12]).fastq$'
-    r1_regex = r'_(1).fastq$'
-    r2_regex = r'_(2).fastq$'
+    pe_regex = r'_([12]).fastq(.gz)*$'
+    r1_regex = r'_(1).fastq(.gz)*$'
+    r2_regex = r'_(2).fastq(.gz)*$'
     file_names_prefix = list(set([re.sub(pe_regex, '', os.path.basename(file)) for file in list(fastq_files)]))
     tmp_fastq_files_pair_1 = []
     tmp_fastq_files_pair_2 = []
