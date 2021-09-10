@@ -75,22 +75,22 @@ def handle_paired_end( fastq_files ):
     :param fastq_files: fastq files.
     :return: two lists of fastq files, first corresponding to first mate, second corresponding to second mate, and list of file prefixes
     """
-
-    pe_regex = r'_([12]).fastq(.gz)*$'
-    r1_regex = r'_(1).fastq(.gz)*$'
-    r2_regex = r'_(2).fastq(.gz)*$'
+    fastq_files = list(set(fastq_files))
+    pe_regex = r'_([12]).fastq$'
+    r1_regex = r'_(1).fastq$'
+    r2_regex = r'_(2).fastq$'
     file_names_prefix = list(set([re.sub(pe_regex, '', os.path.basename(file)) for file in list(fastq_files)]))
     tmp_fastq_files_pair_1 = []
     tmp_fastq_files_pair_2 = []
     for file_prefix in file_names_prefix:
-        file_pair = [file for file in list(fastq_files) if file_prefix in file]
+        file_pair = list(set([file for file in list(fastq_files) if file_prefix in file]))
         r1_matches = [file for file in list(file_pair) if re.search(r1_regex, file) is not None]
         r2_matches = [file for file in list(file_pair) if re.search(r2_regex, file) is not None]
         try:
             # assert that each file pair is actually a pair
             assert len(file_pair) == 2
         except:
-            raise Exception('for file_prefix {} there are more or less than 2 associated files'.format(file_prefix))
+            raise Exception('for file_prefix {} there are more or less than 2 associated files: {}'.format(file_prefix, file_pair))
 
         try:
             assert len(r1_matches) == 1
@@ -108,7 +108,7 @@ def handle_paired_end( fastq_files ):
         assert no_fastq == 2 * len(tmp_fastq_files_pair_2)
         assert no_fastq == 2 * len(tmp_fastq_files_pair_1)
     except:
-        raise Exception('Not all fastq files have mate pair OR not all fastq files represented in determined paired files')
+        raise Exception('Not all fastq files have mate pair OR not all fastq files represented in determined paired files - pair1: {} and pair2: {}' .format(tmp_fastq_files_pair_1, tmp_fastq_files_pair_2))
 
     return tmp_fastq_files_pair_1, tmp_fastq_files_pair_2, file_names_prefix
 
@@ -121,7 +121,7 @@ def handle_paired_end( fastq_files ):
 @click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
 @click.option('--reference_db', type=click.Path(exists=True), help='Reference Database file.')
 @click.option('--output_dir', default=(os.getcwd()+"/kneadeddata/"), show_default=True, type=str, help='Directory to store results.')
-@click.option('--trimmomatic', default=(glob.glob("/root/anaconda/envs/**/trimmomatic-*/", recursive=True)[0]), show_default=True, type=str, help='Directory to store results.')
+@click.option('--trimmomatic', default=(glob.glob("/src/anaconda/envs/**/trimmomatic-*/", recursive=True)[0]), show_default=True, type=str, help='Directory to store results.')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
 @click.option('--remove_untarred_fastq/--no-remove_untarred_fastq', default=True, show_default=True, help='Remove untarred fastq file, if a tarred fastq file was used.')
 @click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to kneaddata, encapsulated as a string. i.e. \"-q=phred64 --trimmomatic-options=SLIDINGWINDOW:4:20 --trimmomatic-options=MINLEN:50\"')
@@ -281,6 +281,10 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+    
+    # Ensure in_files are unique
+    ## When running on the cluster, files get passed twice when running paired end workflows
+    inp_files = list(set(inp_files))
 
     m = 0
 
@@ -296,9 +300,15 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
             master_df = df
         else:
             master_df = master_df.append(df)
-
+    
     freq_df = master_df.loc[:, ['freq', 'tax_name', 'filename']]
     count_df = master_df.loc[:, ['total_assigned', 'tax_name', 'filename']]
+    
+    click.echo(f"INFO: freq_df shape:{freq_df.shape}")
+    print(freq_df.head())
+    idx = pd.Index(freq_df.index)
+    click.echo(f"INFO: count_df shape:{count_df.shape}")
+    print(count_df.head())
     freq_mat_df = freq_df.pivot(index='filename', columns='tax_name', values='freq')
     count_mat_df = count_df.pivot(index='filename', columns='tax_name', values='total_assigned')
 

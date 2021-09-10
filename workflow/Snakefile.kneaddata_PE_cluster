@@ -1,0 +1,45 @@
+#configfile: "kraken2_wf_config.yaml"
+
+import os
+
+# setup params, inputs
+raw_data_dir = config["raw_data_dir"]
+#print(raw_data_dir)
+run_ids, read_mates, = glob_wildcards( raw_data_dir + "/{run}_{read_mate}.fastq") 
+#print(run_ids)
+#print(read_mates)
+# run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
+#run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
+#read_mate = ["1", "2"]
+master_output_dir=config["master_output_dir"]
+reads_subsample=config["reads_subsample"]
+seqtk_seed=config["seqtk_seed"]
+nthreads=config["nthreads"]
+logfile_suffix='_' + os.path.basename(master_output_dir)
+log_dir=config["log_dir"]
+
+rule all:
+	input:
+		expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_1.fastq", run=run_ids, master_output_dir=master_output_dir)
+
+rule kneaddata:
+	input:
+		fastq_1 = "{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_1.fastq",
+		fastq_2 = "{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_2.fastq"
+	output:
+		#check=temp(touch("kneaddata_{run}.done")),
+		paired_fastq="{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_1.fastq"
+	params:
+		reference_db="data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
+		output_dir="{master_output_dir}/kneadeddata/",
+		trimmomatic="/src/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
+		bowtie_path="/src/anaconda/envs/microbiome/bin/bowtie2"
+	threads: 10
+	singularity:
+		#"docker://whitleyo/microbiome_ubuntu20:latest"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && PS=${{PS:-}} && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+		"kneaddata --input {input.fastq_1} --input {input.fastq_2} --threads {threads} --bypass-trf --trimmomatic {params.trimmomatic} --reference-db {params.reference_db} --output {params.output_dir} -q=phred33 --trimmomatic-options=SLIDINGWINDOW:4:30 --store-temp-output --decontaminate-pairs lenient --bowtie2-options='--very-sensitive'"
+		#"python /project/src/metagenpipe.py run-kneaddata --paired_end --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"

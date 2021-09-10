@@ -2,9 +2,39 @@
     "__default__": {
         "account": "rrg-hroest",
         "cpus-per-task": "1",
-        "mem-per-cpu": 16384,
+        "mem": 16384,
         "job-name": "JOBNAME.{rule}",
-        "output": "logs/cluster/{rule}.{wildcard}.out",
-        "error": "logs/cluster/{rule}.{wildcard}.err"
+        "output": "logs/cluster/{rule}.{wildcards}.out",
+        "error": "logs/cluster/{rule}.{wildcards}.err"
+    },
+
+    "subsample_fastq": {
+        "cpus-per-task": "1",
+        "mem": 8192,
+        "time"      : "01:00:00"
+    },
+
+    "kneaddata": {
+        "cpus-per-task": "10",
+        "mem": 32768,
+        "time"      : "01:30:00"
+    },
+
+    "kraken2": {
+        "cpus-per-task": "10",
+        "mem": 65536,
+        "time"      : "02:00:00"
+    },
+
+    "matrix": {
+        "cpus-per-task": "1",
+        "mem": 16384,
+        "time"      : "02:00:00"
+    },
+
+    "papermill_compile": {
+        "cpus-per-task": "1",
+        "mem": 16384,
+        "time"      : "02:00:00"
     }
 }
