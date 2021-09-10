@@ -26,8 +26,10 @@ conda config --add channels conda-forge
 conda install  -y -c bioconda python=3.7 metaphlan
 # installs wrapper for fastq dumbps
 conda install -y -c bioconda bioinfokit
+# install bowtie2 before kneaddata installs it, to enforce version
+conda install -y -c bioconda bowtie2=2.4.4
 # installs kneaddata for preprocessing
-conda install -c bioconda kneaddata
+conda install -y -c bioconda kneaddata=0.7.4
 # installs humann2 for pan-genome profiling
 conda install humann -c biobakery -y
 ## installs kraken2
