@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn import model_selection
 import copy
 from vizwiz import VizWiz
+from ScoreFunctions import *
 from scipy.stats import ttest_ind as ttest
 from scipy.stats import pearsonr, spearmanr, fisher_exact
 from statsmodels.stats.multitest import fdrcorrection
@@ -595,6 +596,8 @@ class MultiTrainTester(VizWiz):
         self.test_scores = []
         self.seeds = None
         self.history = []
+        # marks whether or not training completed successfully for all splits
+        self.trained = False
 
     def buildEncoder(self, classLabels):
         """
@@ -640,3 +643,31 @@ class MultiTrainTester(VizWiz):
             self.y_train_pred.append( TrainTesterCopy.y_train_pred )
             self.y_test_pred.append( TrainTesterCopy.y_test_pred )
             self.history.append( TrainTesterCopy.history )
+        # mark that training complete for all splits
+        self.trained = True
+
+    def getScores(self):
+        """
+        Get a variety of scores on test data. See ScoreFunctions.py for scores used
+        :return: dictionary of score metrics
+        """
+
+        try:
+            assert self.trained
+        except:
+            raise ValueError('self.trained is False. did you run training?')
+
+        score_metrics = {'split': [], 'score_type': [], 'value': []}
+        score_dict = getScoreDict()
+        for i in range(self.n_splits):
+            X_test = self.X_test[i]
+            y_test = self.y_test[i]
+            Trainer_i = self.TrainerList[i]
+            for score_key in score_dict.keys():
+                score_entry = score_dict[score_key]
+                score_func = score_entry['score_func']
+                score_metrics['split'].append(i)
+                score_metrics['score_type'].append(score_key)
+                score_metrics['value'].append(Trainer_i.score(X_test, y_test, score_func, use_proba=score_entry['use_proba']))
+
+        return score_metrics

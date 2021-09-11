@@ -91,3 +91,18 @@ def NPV_SCORE(y_true, y_pred):
     :return: negative predictive value (precision of negative label), assuming a positive label of 1.
     """
     return metrics.precision_score(y_true, y_pred, average='binary', pos_label=0)
+
+def getScoreDict():
+
+    scorer_list = [AUROC_SCORE, AUROC_NEG,  AUPRC_SCORE, AUPRC_NEG, SENSITIVITY_SCORE,
+                   SPECIFICITY_SCORE, PPV_SCORE, NPV_SCORE, metrics.f1_score]
+    scorer_names = ['AUROC_POS', 'AUROC_NEG', 'AUPRC_POS', 'AUPRC_NEG', 'sensitivity',
+                    'specificity', 'ppv_score', 'npv_score', 'f1_score']
+    use_proba = [True, True, True, True, False,
+                 False, False, False, False]
+    score_dict = {}
+
+    for i in range(len(scorer_names)):
+        score_dict[scorer_names[i]] = {'score_func': scorer_list[i], 'use_proba': use_proba[i]}
+
+    return score_dict
