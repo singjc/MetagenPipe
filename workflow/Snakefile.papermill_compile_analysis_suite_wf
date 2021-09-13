@@ -1,0 +1,45 @@
+rule all:
+    input:
+        "papermill_compile.done"
+
+rule papermill_compile:
+    input:
+        inp_mat_file = '/project/data/raw/justin_paired_end_run_jul_6_2021/PE_50K_freq_mat.csv',
+        metadata_file = '/project/data/raw/Jie_2017_supp_table_1.xlsx',
+        identifiers_file = '/project/data/raw/SRA/all_runs.csv'
+    output:
+        check=temp(touch("papermill_compile.done")),
+        #nb_output='/project/workflow/results/notebooks/LR_Classifier_generic.ipynb'
+    params:
+        #inp_mat_file = '/project/workflow/results/kraken2_10K/matrix/freq_mat.csv',
+        #metadata_file = '/project/data/raw/Jie_2017_supp_table_1.xlsx',
+        #identifiers_file = '/project/data/raw/SRA/all_runs.csv',
+        #output_dir = '/project/workflow/results/notebooks',
+        notebook_output_dir = '/project/workflow/notebooks/PE_50K_Sex',
+        master_output_dir = '/project/workflow/results/PE_50K_Sex',
+        data_select_file = '/project/src/Select_Data_sex_complete.ipynb',
+        LR_DE_file = '/project/src/LR_Classifier_DE_generic.ipynb',
+        LR_DE_clinical_file = '/project/src/LR_Classifier_DE_w_clinical_generic.ipynb',
+        LR_clinical_file = '/project/src/LR_Classifier_clinical_only_generic.ipynb',
+        PCA_file = '/project/src/PCA_DE_generic.ipynb',
+        retrain = True,
+        fdr = 0.05
+    log:
+        "logs/papermill_compile.log"
+    shell:
+        "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "preproc_dir=\"{params.master_output_dir}/prepped_data\" && "
+        "notebook_dir=\"{params.notebook_output_dir}\" && "
+        "if [[ ! -d {params.master_output_dir} ]] ; then mkdir {params.master_output_dir} ; fi && "
+        "if [[ ! -d {params.notebook_output_dir} ]]; then mkdir {params.notebook_output_dir} ; fi && "
+        "LR_DE_output_dir=\"{params.master_output_dir}/LR_DE\" && "
+        "LR_DE_clinical_output_dir=\"{params.master_output_dir}/LR_DE_clinical\" && "
+        "LR_clincal_output_dir=\"{params.master_output_dir}/LR_clinical\" && "
+        "papermill {params.data_select_file} \"${{notebook_dir}}/prep_data.ipynb\"  -p inp_mat_file {input.inp_mat_file} -p metadata_file {input.metadata_file} -p identifiers_file {input.identifiers_file} -p output_dir $preproc_dir -p overwrite {params.retrain} &>> {log} && "
+        "papermill {params.LR_DE_file} \"${{notebook_dir}}/LR_DE.ipynb\"  -p inp_dir $preproc_dir -p output_dir $LR_DE_output_dir -p retrain {params.retrain} -p fdr_de  {params.fdr} &>> {log} && "
+        "papermill {params.LR_DE_clinical_file} \"${{notebook_dir}}/LR_DE_w_clinical.ipynb\" -p inp_dir $preproc_dir -p output_dir $LR_DE_clinical_output_dir -p retrain {params.retrain} -p fdr_de {params.fdr} &>> {log} && "
+        "papermill {params.LR_clinical_file} \"${{notebook_dir}}/LR_clinical.ipynb\"  -p inp_dir $preproc_dir -p output_dir $LR_clincal_output_dir -p retrain {params.retrain} &>> {log} && "
+        "papermill {params.PCA_file} \"${{notebook_dir}}/PCA.ipynb\"  -p inp_dir $preproc_dir -p fdr_de {params.fdr} &>> {log} && "
+        "end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "echo \"INFO: Process started on $start_dt\" &>> {log} && "
+        "echo \"INFO: Process finished on $end_dt\" &>> {log}"
