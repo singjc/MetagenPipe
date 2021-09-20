@@ -1,0 +1,73 @@
+---
+title: "Kraken2 PE Subsampling Insilico Depth Experiment"
+author: "Flora Bioworks"
+date: "`r format(Sys.time(), '%a %B %d %X %Z %Y')`"
+geometry: paperheight=15in,paperwidth=10in,margin=1in
+output:
+  html_document:
+  code_folding: hide
+df_print: paged
+toc: true
+number_sections: false
+toc_depth: 6
+toc_float: false
+---
+
+# PCA {.tabset .tabset-fade .tabset-pills}
+
+## kraken2_PE_500
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_500/notebooks/kraken2_PE_500_PCA.html")
+```
+
+## kraken2_PE_1K
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_1K/notebooks/kraken2_PE_1K_PCA.html")
+```
+
+## kraken2_PE_5K
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_5K/notebooks/kraken2_PE_5K_PCA.html")
+```
+
+## kraken2_PE_10K
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_10K/notebooks/kraken2_PE_10K_PCA.html")
+```
+
+## kraken2_PE_25K
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_25K/notebooks/kraken2_PE_25K_PCA.html")
+```
+
+## kraken2_PE_50K
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_50K/notebooks/kraken2_PE_50K_PCA.html")
+```
+
+## kraken2_PE_100K
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_100K/notebooks/kraken2_PE_100K_PCA.html")
+```
+
+## kraken2_PE_500K
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_500K/notebooks/kraken2_PE_500K_PCA.html")
+```
+
+## kraken2_PE_1M
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_1M/notebooks/kraken2_PE_1M_PCA.html")
+```
+
+## kraken2_PE_5M
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_5M/notebooks/kraken2_PE_5M_PCA.html")
+```
+
+## kraken2_PE_10M
+```{r, echo=FALSE}
+htmltools::includeHTML("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_10M/notebooks/kraken2_PE_10M_PCA.html")
+```
+
+
