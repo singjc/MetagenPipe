@@ -57,17 +57,11 @@ def QuerySRA(expt_acc):
        return_dict['RunID'].append(run['accession'])
 
     # get sample id (alias)
-    sample_attrs = efetch_soup.SAMPLE.find_all('SAMPLE_ATTRIBUTE')
-    alias = None
-    for attr in sample_attrs:
-        tag_name = attr.TAG.contents[0]
-        if tag_name == 'Alias':
-            if not alias is None:
-                raise Exception('encountered more than one ALIAS under sample attributes')
-            alias = attr.VALUE.contents[0]
-
+    sample_tag = efetch_soup.SAMPLE
+    alias = sample_tag['alias']
+    click.echo(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] INFO: ALIAS: {alias}")
     if alias is None:
-        raise Exception('expected alias to be present in sample attributes')
+        raise Exception('expected alias to be present in sample tag')
 
     for i in range(0, len(return_dict['RunID'])):
         # append one instance of alias, expt accession for each run
@@ -186,7 +180,8 @@ def RunAll(expt_acc_list, download_dir, overwrite=False, skip=True, accs_only=Fa
         del run_df
         del run_dict
         gc.collect()
-
+    if m == 0:
+        raise Exception('Likely 0 successful SRA queries')
     all_runs_df.to_csv(os.path.join(download_dir, 'all_runs.csv'))
 
 def ParseBool(x, argname):
