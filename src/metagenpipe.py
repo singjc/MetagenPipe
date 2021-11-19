@@ -315,6 +315,29 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
     freq_mat_df.to_csv(os.path.join(output_dir, freq_mat_file))
     count_mat_df.to_csv(os.path.join(output_dir, count_mat_file))
 
+# Concatenate paired end reads
+@cli.command()
+@click.argument('inp_files', nargs=-1, type=click.Path(exists=True), help='input files. shoudl be paired paired-end fastq file')
+@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory to store output files')
+def concat_reads( inp_files, output_dir='./' ):
+    """
+    Concatenate paired end reads to single file
+    :param inp_files: list of input fastq files
+    :param output_dir: output directory
+    :return: None.
+    """
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    fastq1_files, fastq2_files, prefixes = handle_paired_end(inp_files)
+    for i in range(len(fastq1_files)):
+        fastq1 = fastq1_files[i]
+        fastq2 = fastq2_files[i]
+        prefix_i = prefixes[i]
+        output_file = os.path.join(output_dir, prefix_i + '_concat.fastq')
+        os.system('cat {} {} > {}'.format(fastq1, fastq2, output_file))
+
 
 @cli.command()
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
