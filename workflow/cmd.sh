@@ -47,7 +47,8 @@ else
 fi
 
 # SRA Download Workflow
-#snakemake --snakefile Snakefile.sradownload_wf -j 2
+# snakemake --snakefile Snakefile.sradownload_wf -j 2
+snakemake --snakefile Snakefile.sradownload_subs_wf -j 2
 
 # Preprocessing Workflow
 
@@ -82,6 +83,6 @@ fi
 # machine learning notebook workflow automated through papermill
 # snakemake --snakefile Snakefile.papermill_compile_wf -j 1
 # papermill workflow with data preparation + analyses separated
-snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1
+# snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1
 
 conda deactivate

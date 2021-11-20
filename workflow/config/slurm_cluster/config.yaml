@@ -1,0 +1,16 @@
+restart-times: 0
+jobscript: "slurm-jobscript.sh"
+cluster: "slurm-submit.py"
+cluster-status: "slurm-status.py"
+max-jobs-per-second: 1
+max-status-checks-per-second: 10
+local-cores: 1
+latency-wait: 60
+
+# Preprocessing Specific
+#reads_subsample: 50000
+#master_output_dir: 'results/kraken2_PE'
+#log_dir: 'logs'
+#raw_data_dir: '/project/data/raw/SRA/'
+#seqtk_seed: 132
+#nthreads: 1
