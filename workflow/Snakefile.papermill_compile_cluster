@@ -1,0 +1,42 @@
+exp_dir=config["exp_dir"]
+master_output_dir=config["master_output_dir"]
+
+rule all:
+	input:
+		expand('{master_output_dir}/notebooks/{exp_dir}_LR_Classifier_generic.html', master_output_dir=master_output_dir, exp_dir=exp_dir)
+
+rule papermill_compile:
+	input:
+		nb_file='src/LR_Classifier_generic.ipynb'
+	output:
+		#check=temp(touch("papermill_compile.done")),
+		nb_output=expand('{master_output_dir}/notebooks/LR_Classifier_generic.ipynb', master_output_dir=master_output_dir)
+	params:
+		inp_mat_file = expand('{master_output_dir}/matrix/freq_mat.csv', master_output_dir=master_output_dir),
+		metadata_file = 'data/raw/Jie_2017_supp_table_1.xlsx',
+		identifiers_file = 'data/raw/SRA/all_runs.csv',
+		output_dir = expand('{master_output_dir}/notebooks/', master_output_dir=master_output_dir),
+		retrain = True
+	singularity:
+		#"docker://florabioworks/microbiome_ubuntu20:cluster"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && black /src/anaconda/envs/microbiome/lib/python3.7/site-packages/black/cache.py && "
+		"papermill {input.nb_file} {output.nb_output} -p inp_mat_file {params.inp_mat_file} -p metadata_file {params.metadata_file} -p identifiers_file {params.identifiers_file} -p output_dir {params.output_dir} -p retrain {params.retrain}"
+
+rule ipynb_html:
+	input: 
+		rules.papermill_compile.output.nb_output
+	output: 
+		expand('{master_output_dir}/notebooks/{exp_dir}_LR_Classifier_generic.html', master_output_dir=master_output_dir, exp_dir=exp_dir)
+	params:
+		html_output=expand('{master_output_dir}/notebooks/LR_Classifier_generic.html', master_output_dir=master_output_dir)
+	singularity:
+		#"docker://florabioworks/microbiome_ubuntu20:cluster"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+		"jupyter nbconvert --to html {input} && "		
+		"mv {params.html_output} {output}"

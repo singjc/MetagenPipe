@@ -75,7 +75,7 @@ def handle_paired_end( fastq_files ):
     :param fastq_files: fastq files.
     :return: two lists of fastq files, first corresponding to first mate, second corresponding to second mate, and list of file prefixes
     """
-
+    fastq_files = list(set(fastq_files))
     pe_regex = r'_([12]).fastq(.gz)*$'
     r1_regex = r'_(1).fastq(.gz)*$'
     r2_regex = r'_(2).fastq(.gz)*$'
@@ -83,14 +83,14 @@ def handle_paired_end( fastq_files ):
     tmp_fastq_files_pair_1 = []
     tmp_fastq_files_pair_2 = []
     for file_prefix in file_names_prefix:
-        file_pair = [file for file in list(fastq_files) if file_prefix in file]
+        file_pair = list(set([file for file in list(fastq_files) if file_prefix in file]))
         r1_matches = [file for file in list(file_pair) if re.search(r1_regex, file) is not None]
         r2_matches = [file for file in list(file_pair) if re.search(r2_regex, file) is not None]
         try:
             # assert that each file pair is actually a pair
             assert len(file_pair) == 2
         except:
-            raise Exception('for file_prefix {} there are more or less than 2 associated files'.format(file_prefix))
+            raise Exception('for file_prefix {} there are more or less than 2 associated files: {}'.format(file_prefix, file_pair))
 
         try:
             assert len(r1_matches) == 1
@@ -108,7 +108,7 @@ def handle_paired_end( fastq_files ):
         assert no_fastq == 2 * len(tmp_fastq_files_pair_2)
         assert no_fastq == 2 * len(tmp_fastq_files_pair_1)
     except:
-        raise Exception('Not all fastq files have mate pair OR not all fastq files represented in determined paired files')
+        raise Exception('Not all fastq files have mate pair OR not all fastq files represented in determined paired files - pair1: {} and pair2: {}' .format(tmp_fastq_files_pair_1, tmp_fastq_files_pair_2))
 
     return tmp_fastq_files_pair_1, tmp_fastq_files_pair_2, file_names_prefix
 
@@ -121,7 +121,7 @@ def handle_paired_end( fastq_files ):
 @click.argument('fastq_files', nargs=-1, type=click.Path(exists=True))
 @click.option('--reference_db', type=click.Path(exists=True), help='Reference Database file.')
 @click.option('--output_dir', default=(os.getcwd()+"/kneadeddata/"), show_default=True, type=str, help='Directory to store results.')
-@click.option('--trimmomatic', default=(glob.glob("/root/anaconda/envs/**/trimmomatic-*/", recursive=True)[0]), show_default=True, type=str, help='Directory to store results.')
+@click.option('--trimmomatic', default=(glob.glob("/src/anaconda/envs/**/trimmomatic-*/", recursive=True)[0]), show_default=True, type=str, help='Directory to store results.')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
 @click.option('--remove_untarred_fastq/--no-remove_untarred_fastq', default=True, show_default=True, help='Remove untarred fastq file, if a tarred fastq file was used.')
 @click.option('--extra_args', type=click.STRING, help='Extra arguments to pass to kneaddata, encapsulated as a string. i.e. \"-q=phred64 --trimmomatic-options=SLIDINGWINDOW:4:20 --trimmomatic-options=MINLEN:50\"')
@@ -281,6 +281,10 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+    
+    # Ensure in_files are unique
+    ## When running on the cluster, files get passed twice when running paired end workflows
+    inp_files = list(set(inp_files))
 
     m = 0
 
@@ -296,14 +300,22 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
             master_df = df
         else:
             master_df = master_df.append(df)
-
+    
     freq_df = master_df.loc[:, ['freq', 'tax_name', 'filename']]
     count_df = master_df.loc[:, ['total_assigned', 'tax_name', 'filename']]
+    
+    click.echo(f"INFO: freq_df shape:{freq_df.shape}")
+    print(freq_df.head())
+    idx = pd.Index(freq_df.index)
+    click.echo(f"INFO: count_df shape:{count_df.shape}")
+    print(count_df.head())
     freq_mat_df = freq_df.pivot(index='filename', columns='tax_name', values='freq')
     count_mat_df = count_df.pivot(index='filename', columns='tax_name', values='total_assigned')
 
     freq_mat_df.to_csv(os.path.join(output_dir, freq_mat_file))
     count_mat_df.to_csv(os.path.join(output_dir, count_mat_file))
+
+
 
 
 @cli.command()
@@ -317,6 +329,56 @@ def metaphlan_report( inp_files, output_dir, ext ):
     if len(inp_files) < 1:
         click.ClickException("At least one input file needs to be provided.")
     save_report(inp_files, output_dir, ext)
+
+# Concatenate paired end reads
+@cli.command()
+@click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory to store output files')
+def concat_reads( inp_files, output_dir='./' ):
+    """
+    Concatenate paired end reads to single file
+    :param inp_files: list of input fastq files
+    :param output_dir: output directory
+    :return: None.
+    """
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    fastq1_files, fastq2_files, prefixes = handle_paired_end(inp_files)
+    for i in range(len(fastq1_files)):
+        fastq1 = fastq1_files[i]
+        fastq2 = fastq2_files[i]
+        prefix_i = prefixes[i]
+        output_file = os.path.join(output_dir, prefix_i + '_concat.fastq')
+        os.system('cat {} {} > {}'.format(fastq1, fastq2, output_file))
+
+# Run humann3 with the ability to skip upon failure
+@cli.command()
+@click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory for output file')
+@click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+@click.option('--nucleotide_database', default='/project/data/raw/humann3_db')
+def run_humann3( inp_files, output_dir='./', nthreads=1, nucleotide_database='/project/data/raw/humann3_db' ):
+    """
+
+    :param inp_files: input fastq files. for paired end data, recommended that you concatenate reads for each file pair into single file with concat_reads
+    :param output_dir: output directory
+    :param nthreads: number of threads to use
+    :param nucleotide_database: path to sequence library for humann3
+    :return: None 
+    write humann3 output files. see (https://github.com/biobakery/biobakery/wiki/humann3#23-humann-default-outputs)
+    for more details
+    """
+
+    for fname in inp_files:
+        cmd_use = "humann3 --input {} --output {} --threads {} --nucleotide-database {}".format(fname, output_dir, nthreads, nucleotide_database)
+        exit_status = os.system(cmd_use)
+        
+        if not exit_status == 0:
+            warn('nonzero exit status for command: '+ cmd_use)
+            warn('command exited with status {}'.format(exit_status))
+        
     
 if __name__ == '__main__':
     cli(obj={})

@@ -23,38 +23,37 @@ conda activate microbiome
 conda config --add channels defaults
 conda config --add channels bioconda
 conda config --add channels conda-forge
-conda install  -y -c bioconda python=3.7 metaphlan
+conda install -c conda-forge mamba -y
+mamba install  -y -c bioconda python=3.7 metaphlan
 # installs wrapper for fastq dumbps
-conda install -y -c bioconda bioinfokit
-# install bowtie2 before kneaddata installs it, to enforce version
-conda install -y -c bioconda bowtie2=2.4.4
+mamba install -y -c bioconda bioinfokit
 # installs kneaddata for preprocessing
-conda install -y -c bioconda kneaddata=0.7.4
+mamba install -c bioconda kneaddata
+>>>>>>> 4714571382e3946538c526bb6d4e7819b9bf1cbe
 # installs humann2 for pan-genome profiling
-conda install humann -c biobakery -y
+mamba install humann -c biobakery -y
 ## installs kraken2
 #git clone https://github.com/DerrickWood/kraken2
 #mv kraken2 /src/kraken2
 #bash /src/kraken2/install_kraken2.sh /src/kraken2
 #cp /src/kraken2/kraken2{,-build,-inspect} $HOME/bin
 # other useful packages
-conda install numpy -y
-conda install scipy -y
-conda install pandas -y
-conda install seaborn -y
-conda install scikit-learn -y
-conda install -c conda-forge matplotlib -y
-conda install -c conda-forge scikit-plot -y
-conda install -c conda-forge xgboost -y
-conda install jupyter -y
-conda install openpyxl -y
-conda install pytorch -y
-conda install -c anaconda beautifulsoup4 -y
-conda install lxml -y
-conda install -c bioconda seqtk -y
-conda install -c conda-forge mamba -y
-conda install -c conda-forge bioconda::snakemake -y
-conda install -c conda-forge papermill -y
+mamba install numpy -y
+mamba install scipy -y
+mamba install pandas -y
+mamba install seaborn -y
+mamba install scikit-learn -y
+mamba install -c conda-forge matplotlib -y
+mamba install -c conda-forge scikit-plot -y
+mamba install -c conda-forge xgboost -y
+mamba install jupyter -y
+mamba install openpyxl -y
+mamba install pytorch -y
+mamba install -c anaconda beautifulsoup4 -y
+mamba install lxml -y
+mamba install -c bioconda seqtk -y
+mamba install -c conda-forge bioconda::snakemake -y
+mamba install -c conda-forge papermill -y
 
 # metaphlan, humann2, + kneaddata install databases
 # mkdir /databases
