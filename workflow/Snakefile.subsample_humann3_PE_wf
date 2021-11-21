@@ -18,7 +18,7 @@ log_dir=config["log_dir"]
 
 rule all:
 	input:
-		"cat_files.done"
+		"humann3.done"
 
 rule subsample_fastq:
 	input:
@@ -47,12 +47,12 @@ rule kneaddata:
 		fastq = rules.subsample_fastq.output.subsampled_fastq,
 	output:
 		check=temp(touch("kneaddata.done")),
-		paired_fastq=temp(expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)),
-		unmatched_fastq=temp(expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_unmatched_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)),
-		paired_contam_fastq=temp(expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_hg37dec_v0.1_bowtie2_paired_contam_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)),
-		unmatched_contam_fastq=temp(expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_hg37dec_v0.1_bowtie2_unmatched_{read_mate}_contam.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)),
-		trimmed_fastq=temp(expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata.trimmed.{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)),
-		trimmed_single_fastq=temp(expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata.trimmed.single.{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir))
+		paired_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		unmatched_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_unmatched_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		paired_contam_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_hg37dec_v0.1_bowtie2_paired_contam_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		unmatched_contam_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_hg37dec_v0.1_bowtie2_unmatched_{read_mate}_contam.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		trimmed_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata.trimmed.{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		trimmed_single_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata.trimmed.single.{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir=expand("{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
@@ -69,13 +69,14 @@ rule kneaddata:
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
-
+# note: we are using unmatched fastq files here to see if we can run the pipeline on populated fastq files.
+# for some reason kneaddata is putting all the reads passing QC as unmatched 
 rule cat_files:
 	input:
-		fastq=rules.kneaddata.output.paired_fastq
+		fastq=rules.kneaddata.output.unmatched_fastq
 	output:
 		check=temp(touch("cat_files.done")),	
-		fastq_out = expand("{master_output_dir}/cat_files/{run}_seqt.subsampled_1_kneaddata_paired_concat.fastq", master_output_dir=master_output_dir, run=run_ids)
+		fastq_out = expand("{master_output_dir}/cat_files/{run}_seqt.subsampled_1_kneaddata_unmatched_concat.fastq", master_output_dir=master_output_dir, run=run_ids)
 	params:
 		output_dir=expand("{master_output_dir}/cat_files", master_output_dir=master_output_dir)
 	threads: nthreads
@@ -83,31 +84,29 @@ rule cat_files:
 		expand("{log_dir}/cat_files{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/metagenpipe.py concat-reads --output_dir={params.output_dir} {input.fastq} &&"
+		"python /project/src/metagenpipe.py concat-reads --output_dir={params.output_dir} {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
 
-# rule humann3:
-# 	input:
-# 		fastq=rules.cat_files.output.fastq_out
-# 	output:
-# 		check=temp(touch("humann3.done")),
-# 		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_genefamilies.tsv", run=run_ids, master_output_dir=master_output_dir),
-# 		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_pathabundance.tsv", run=run_ids, master_output_dir=master_output_dir)
-# 
-# 	params:
-# 		input_type="fastq",
-# 		output_dir=expand("{master_output_dir}/kraken2", master_output_dir=master_output_dir),
-# 		reference_db="/project/data/raw/kraken2_db",
-# 		nthreads=nthreads,
-# 		dbname="/project/data/raw/kraken2db"
-# 	threads: nthreads
-# 	log:
-# 		expand("{log_dir}/kraken2{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
-# 	shell:
-# 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-# 		"python /project/src/metagenpipe.py run-kraken2 --paired_end=True --db_use={params.reference_db} --output_dir={params.output_dir} --nthreads {params.nthreads} {input.fastq} &>> {log} &&"
-# 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-# 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
-# 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"log
+rule humann3:
+	input:
+		fastq=rules.cat_files.output.fastq_out
+	output:
+		check=temp(touch("humann3.done")),
+		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_genefamilies.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_pathabundance.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathcoverage_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_pathcoverage.tsv", run=run_ids, master_output_dir=master_output_dir)
+	params:
+		output_dir=expand("{master_output_dir}/humann3", master_output_dir=master_output_dir),
+		nthreads=nthreads,
+		nucleotide_database="/project/data/raw/humann3_db"
+	threads: nthreads
+	log:
+		expand("{log_dir}/humann3{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"python /project/src/metagenpipe.py run-humann3 --output_dir={params.output_dir} --nthreads={params.nthreads} --nucleotide_database={params.nucleotide_database} {input.fastq} &>> {log} &&"
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
