@@ -315,6 +315,21 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
     freq_mat_df.to_csv(os.path.join(output_dir, freq_mat_file))
     count_mat_df.to_csv(os.path.join(output_dir, count_mat_file))
 
+
+
+
+@cli.command()
+@click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
+@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory to store report')
+@click.option('--ext', default=('pdf'), show_default=True, type=str, help='Extension to save plot as.')
+def metaphlan_report( inp_files, output_dir, ext ):
+    '''
+    Generate a report on metaphlan3 output profile results
+    '''
+    if len(inp_files) < 1:
+        click.ClickException("At least one input file needs to be provided.")
+    save_report(inp_files, output_dir, ext)
+
 # Concatenate paired end reads
 @cli.command()
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
@@ -338,18 +353,29 @@ def concat_reads( inp_files, output_dir='./' ):
         output_file = os.path.join(output_dir, prefix_i + '_concat.fastq')
         os.system('cat {} {} > {}'.format(fastq1, fastq2, output_file))
 
-
+# Run humann3 with the ability to skip upon failure
 @cli.command()
-@click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
-@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory to store report')
-@click.option('--ext', default=('pdf'), show_default=True, type=str, help='Extension to save plot as.')
-def metaphlan_report( inp_files, output_dir, ext ):
-    '''
-    Generate a report on metaphlan3 output profile results
-    '''
-    if len(inp_files) < 1:
-        click.ClickException("At least one input file needs to be provided.")
-    save_report(inp_files, output_dir, ext)
+@click.argument('inp_file', nargs=1, type=click.Path(exists=True))
+@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory for output file')
+@click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
+def run_humann3( inp_file, output_dir='./', nthreads=1 ):
+    """
+
+    :param inp_file: input fastq file. for paired end data, recommended that you concatenate reads into single file with concat_reads
+    :param output_dir: output directory
+    :param nthreads: number of threads to use
+    :return: function returns exit status for system command.
+    write humann3 output files. see (https://github.com/biobakery/biobakery/wiki/humann3#23-humann-default-outputs)
+    for more details
+    """
+    cmd_use = "humann3 --input {} --output {} --threads {}".format(inp_file, output_dir, nthreads)
+    exit_status = os.system(cmd_use)
+
+    if not exit_status == 0:
+        warn('nonzero exit status for command: '+ cmd_use)
+        warn('command exited with status {}'.format(exit_status))
+        
+    return exit_status
     
 if __name__ == '__main__':
     cli(obj={})
