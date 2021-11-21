@@ -1,4 +1,4 @@
-configfile: "kraken2_wf_config.yaml"
+configfile: "humann3_wf_config.yaml"
 
 import os
 
@@ -18,7 +18,7 @@ log_dir=config["log_dir"]
 
 rule all:
 	input:
-		"matrix.done"
+		"cat_files.done"
 
 rule subsample_fastq:
 	input:
@@ -56,7 +56,7 @@ rule kneaddata:
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir=expand("{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
-		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
+		trimmomatic="/src/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
 		nthreads=nthreads
 	threads: nthreads
 	#conda:
@@ -74,26 +74,27 @@ rule cat_files:
 	input:
 		fastq=rules.kneaddata.output.paired_fastq
 	output:
-		fastq_out = expand("{master_output_dir}/cat_files/{run}_cleaned_concatenated.fastq", master_output_dir=master_output_dir, run=run_ids)
+		check=temp(touch("cat_files.done")),	
+		fastq_out = expand("{master_output_dir}/cat_files/{run}_seqt.subsampled_1_kneaddata_paired_concat.fastq", master_output_dir=master_output_dir, run=run_ids)
 	params:
 		output_dir=expand("{master_output_dir}/cat_files", master_output_dir=master_output_dir)
 	threads: nthreads
 	log:
-		expand("{log_dir}/cat_files{logfiles_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+		expand("{log_dir}/cat_files{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/metagenpipe.py cat-files --output_dir={params.output_dir} {input.fastq}"
+		"python /project/src/metagenpipe.py concat-reads --output_dir={params.output_dir} {input.fastq} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
 
 # rule humann3:
 # 	input:
-# 		fastq=rules.kneaddata.output.paired_fastq
+# 		fastq=rules.cat_files.output.fastq_out
 # 	output:
 # 		check=temp(touch("humann3.done")),
-# 		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_genefamilies.tsv", run=run_ids, master_output_dir=master_output_dir),
-# 		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_pathabundance.tsv", run=run_ids, master_output_dir=master_output_dir)
+# 		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_genefamilies.tsv", run=run_ids, master_output_dir=master_output_dir),
+# 		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_pathabundance.tsv", run=run_ids, master_output_dir=master_output_dir)
 # 
 # 	params:
 # 		input_type="fastq",

@@ -317,7 +317,7 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
 
 # Concatenate paired end reads
 @cli.command()
-@click.argument('inp_files', nargs=-1, type=click.Path(exists=True), help='input files. shoudl be paired paired-end fastq file')
+@click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
 @click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory to store output files')
 def concat_reads( inp_files, output_dir='./' ):
     """
