@@ -94,9 +94,9 @@ rule humann3:
 		fastq=rules.cat_files.output.fastq_out
 	output:
 		check=temp(touch("humann3.done")),
-		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_genefamilies.tsv", run=run_ids, master_output_dir=master_output_dir),
-		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_pathabundance.tsv", run=run_ids, master_output_dir=master_output_dir),
-		pathcoverage_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_pathcoverage.tsv", run=run_ids, master_output_dir=master_output_dir)
+		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_genefamilies.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_pathabundance.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathcoverage_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_pathcoverage.tsv", run=run_ids, master_output_dir=master_output_dir)
 	params:
 		output_dir=expand("{master_output_dir}/humann3", master_output_dir=master_output_dir),
 		nthreads=nthreads,
