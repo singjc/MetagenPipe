@@ -358,21 +358,23 @@ def concat_reads( inp_files, output_dir='./' ):
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
 @click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory for output file')
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
-@click.option('--nucleotide_database', default='/project/data/raw/humann3_db')
-def run_humann3( inp_files, output_dir='./', nthreads=1, nucleotide_database='/project/data/raw/humann3_db' ):
+@click.option('--nucleotide_database', default='/project/data/raw/humann3_db/chocophlan')
+@click.option('--protein_database', default='project/data/raw/humann3_db/uniref')
+def run_humann3( inp_files, output_dir='./', nthreads=1, nucleotide_database='/project/data/raw/humann3_db/chocophlan', protein_database='/project/data/raw/humann3_db/uniref' ):
     """
 
     :param inp_files: input fastq files. for paired end data, recommended that you concatenate reads for each file pair into single file with concat_reads
     :param output_dir: output directory
     :param nthreads: number of threads to use
     :param nucleotide_database: path to sequence library for humann3
+    :param protein_database: path to protein sequence library for humann3
     :return: None 
     write humann3 output files. see (https://github.com/biobakery/biobakery/wiki/humann3#23-humann-default-outputs)
     for more details
     """
 
     for fname in inp_files:
-        cmd_use = "humann3 --input {} --output {} --threads {} --nucleotide-database {}".format(fname, output_dir, nthreads, nucleotide_database)
+        cmd_use = "humann3 --input {} --output {} --threads {} --nucleotide-database {} --protein-database {}".format(fname, output_dir, nthreads, nucleotide_database, protein_database)
         exit_status = os.system(cmd_use)
         
         if not exit_status == 0:

@@ -100,13 +100,14 @@ rule humann3:
 	params:
 		output_dir=expand("{master_output_dir}/humann3", master_output_dir=master_output_dir),
 		nthreads=nthreads,
-		nucleotide_database="/project/data/raw/humann3_db"
+		nucleotide_database="/project/data/raw/humann3_db/chocophlan",
+		protein_database="/project/data/raw/humann3_db/uniref"
 	threads: nthreads
 	log:
 		expand("{log_dir}/humann3{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
-		"python /project/src/metagenpipe.py run-humann3 --output_dir={params.output_dir} --nthreads={params.nthreads} --nucleotide_database={params.nucleotide_database} {input.fastq} &>> {log} &&"
+		"python /project/src/metagenpipe.py run-humann3 --output_dir={params.output_dir} --nthreads={params.nthreads} --nucleotide_database={params.nucleotide_database} --protein_database={params.protein_database} {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
