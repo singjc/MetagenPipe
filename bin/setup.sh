@@ -29,9 +29,10 @@ mamba install  -y -c bioconda python=3.7 metaphlan
 mamba install -y -c bioconda bioinfokit
 # installs kneaddata for preprocessing
 mamba install -c bioconda kneaddata
->>>>>>> 4714571382e3946538c526bb6d4e7819b9bf1cbe
+# >>>>>>> 4714571382e3946538c526bb6d4e7819b9bf1cbe
 # installs humann2 for pan-genome profiling
 mamba install humann -c biobakery -y
+
 ## installs kraken2
 #git clone https://github.com/DerrickWood/kraken2
 #mv kraken2 /src/kraken2
@@ -63,6 +64,8 @@ mamba install -c conda-forge papermill -y
 # humann_databases --download utility_mapping full /databases/humann --update-config yes
 # kneaddata_database --download human_genome bowtie2 /databases/kneaddata_human_bowtie2
 
+# force diamond version to that necessary for humann3
+mamba install -c bioconda -y diamond=0.9.36
 conda deactivate
 # kraken2 database
 
