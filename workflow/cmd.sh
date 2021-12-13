@@ -9,7 +9,7 @@ conda activate microbiome
 
 top_results_dir="results"
 log_dir="logs"
-archive_results=1
+archive_results=0
 timestamp=$(date +"%Y_%b_%d_%H_%M_%S")
 
 top_archive_results_dir="archive"
@@ -48,7 +48,10 @@ fi
 
 # SRA Download Workflow
 # snakemake --snakefile Snakefile.sradownload_wf -j 2
-snakemake --snakefile Snakefile.sradownload_subs_wf -j 2
+#snakemake --snakefile Snakefile.sradownload_subs_wf -j 2
+
+# humann3 workflow
+snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
 
 # Preprocessing Workflow
 
