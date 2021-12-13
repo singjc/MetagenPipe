@@ -94,8 +94,8 @@ rule humann3:
 		fastq=rules.cat_files.output.fastq_out
 	output:
 		check=temp(touch("humann3.done")),
-		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_genefamilies.tsv", run=run_ids, master_output_dir=master_output_dir),
-		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_pathabundance.tsv", run=run_ids, master_output_dir=master_output_dir),
+		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_genefamilies_cpm.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_pathabundance_cpm.tsv", run=run_ids, master_output_dir=master_output_dir),
 		pathcoverage_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_pathcoverage.tsv", run=run_ids, master_output_dir=master_output_dir)
 	params:
 		output_dir=expand("{master_output_dir}/humann3", master_output_dir=master_output_dir),
@@ -109,5 +109,26 @@ rule humann3:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"python /project/src/metagenpipe.py run-humann3 --output_dir={params.output_dir} --nthreads={params.nthreads} --nucleotide_database={params.nucleotide_database} --protein_database={params.protein_database} {input.fastq} &>> {log} &&"
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+
+rule matrix:
+	input:
+		inp_dir=rules.humann3.params.output_dir
+	output:
+		check=temp(touch("matrix.done")),
+		output_dir = expand("{master_output_dir}/humann3_merged")
+		gene_fam_mat = expand("{output_dir}/humann3_genefamilies_cpm_joined.tsv", output_dir=output_dir),
+		pathabundance_mat = expand("{output_dir}/humann3_pathabundance_cpm_joined.tsv", output_dir=output_dir),
+		pathcoverage_mat = expand("{output_dir}/humann3_pathcoverage_joined.tsv", output_dir=output_dir)
+	threads: nthreads
+	log:
+		expand("{log_dir}/humann3_matrix_{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"if [[! -d {output.output_dir} ]]; then mkdir {output.output_dir} fi && "
+		"humann_join_tables --input {input.inp_dir} --output {output.gene_fam_mat} --file_name genefamilies_cpm && "
+		"humann_join_tables --input {input.inp_dir} --output {output.pathabundance_mat} --file_name pathabundance_cpm && "
+		"humann_join_tables --input {input.inp_dir} --output {output.pathcoverage_mat} --file_name pathcoverage && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"

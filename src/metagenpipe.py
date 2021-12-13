@@ -353,6 +353,12 @@ def concat_reads( inp_files, output_dir='./' ):
         output_file = os.path.join(output_dir, prefix_i + '_concat.fastq')
         os.system('cat {} {} > {}'.format(fastq1, fastq2, output_file))
 
+def cmd_wrapper( cmd ):
+    exit_status = os.system(cmd)
+    if not exit_status == 0:
+        warn('nonzero exit status for command: ' + cmd)
+        warn('command exited with status {}'.format(exit_status))
+
 # Run humann3 with the ability to skip upon failure
 @cli.command()
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
@@ -360,7 +366,11 @@ def concat_reads( inp_files, output_dir='./' ):
 @click.option('--nthreads', default=1, show_default=True, type=int, help='Number of threads to use for parallel processing.')
 @click.option('--nucleotide_database', default='/project/data/raw/humann3_db/chocophlan')
 @click.option('--protein_database', default='project/data/raw/humann3_db/uniref')
-def run_humann3( inp_files, output_dir='./', nthreads=1, nucleotide_database='/project/data/raw/humann3_db/chocophlan', protein_database='/project/data/raw/humann3_db/uniref' ):
+def run_humann3( inp_files,
+                 output_dir='./',
+                 nthreads=1,
+                 nucleotide_database='/project/data/raw/humann3_db/chocophlan',
+                 protein_database='/project/data/raw/humann3_db/uniref' ):
     """
 
     :param inp_files: input fastq files. for paired end data, recommended that you concatenate reads for each file pair into single file with concat_reads
@@ -372,15 +382,25 @@ def run_humann3( inp_files, output_dir='./', nthreads=1, nucleotide_database='/p
     write humann3 output files. see (https://github.com/biobakery/biobakery/wiki/humann3#23-humann-default-outputs)
     for more details
     """
-
+    fastq_regex = '\\.fastq$'
     for fname in inp_files:
-        cmd_use = "humann3 --input {} --output {} --threads {} --nucleotide-database {} --protein-database {}".format(fname, output_dir, nthreads, nucleotide_database, protein_database)
-        exit_status = os.system(cmd_use)
-        
-        if not exit_status == 0:
-            warn('nonzero exit status for command: '+ cmd_use)
-            warn('command exited with status {}'.format(exit_status))
-        
-    
+        try:
+            assert re.match(fastq_regex, fname)
+        except:
+            raise ValueError('expect fastq input')
+        humann_cmd = "humann3 --input {} --output {} --threads {} --nucleotide-database {} --protein-database {}".format(fname, output_dir, nthreads, nucleotide_database, protein_database)
+        cmd_wrapper( humann_cmd )
+        # renormalize gene family and pathway abundance files
+        file_prefix = re.sub(fastq_regex, '', os.path.basename(fname))
+        gene_fam_file = os.path.join(output_dir, "{}_genefamilies.tsv".format(file_prefix))
+        gene_fam_renorm = os.path.join(output_dir, "{}_genefamilies_cpm.tsv".format(file_prefix))
+        renorm_gene_fam_cmd = "humann_renorm_table --input {} --output {} --units cpm".format(gene_fam_file, gene_fam_renorm)
+        cmd_wrapper(renorm_gene_fam_cmd)
+        path_abundance_file = os.path.join(output_dir, "{}_pathabundance.tsv".format(file_prefix))
+        path_abundance_renorm = os.path.join(output_dir, "{}_pathabundance_cpm.tsv".format(file_prefix))
+        renorm_path_cmd = "humann_renorm_table --input {} --output {} --units cpm".format(path_abundance_file, path_abundance_renorm)
+        cmd_wrapper(renorm_path_cmd)
+
+
 if __name__ == '__main__':
     cli(obj={})
