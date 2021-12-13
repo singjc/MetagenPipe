@@ -385,7 +385,7 @@ def run_humann3( inp_files,
     fastq_regex = '\\.fastq$'
     for fname in inp_files:
         try:
-            assert re.match(fastq_regex, fname)
+            assert re.search(fastq_regex, fname)
         except:
             raise ValueError('expect fastq input')
         humann_cmd = "humann3 --input {} --output {} --threads {} --nucleotide-database {} --protein-database {}".format(fname, output_dir, nthreads, nucleotide_database, protein_database)
