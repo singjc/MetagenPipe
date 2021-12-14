@@ -115,22 +115,24 @@ rule humann3:
 rule matrix:
 	input:
 		check=rules.humann3.output.check,
-		inp_dir=rules.humann3.params.output_dir
+		
 	output:
 		check=temp(touch("matrix.done")),
 		# output_dir = expand("{master_output_dir}/humann3_merged", master_output_dir=master_output_dir),
 		gene_fam_mat = expand("{master_output_dir}/humann3_merged/humann3_genefamilies_cpm_joined.tsv", master_output_dir=master_output_dir),
 		pathabundance_mat = expand("{master_output_dir}/humann3_merged/humann3_pathabundance_cpm_joined.tsv", master_output_dir=master_output_dir),
 		pathcoverage_mat = expand("{master_output_dir}/humann3_merged/humann3_pathcoverage_joined.tsv", master_output_dir=master_output_dir)
+	params:
+		inp_dir=rules.humann3.params.output_dir
 	threads: nthreads
 	log:
 		expand("{log_dir}/humann3_matrix_{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
 	shell:
 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		# "if [[! -d {output.output_dir} ]]; then mkdir {output.output_dir} fi && "
-		"humann_join_tables --input {input.inp_dir} --output {output.gene_fam_mat} --file_name genefamilies_cpm && "
-		"humann_join_tables --input {input.inp_dir} --output {output.pathabundance_mat} --file_name pathabundance_cpm && "
-		"humann_join_tables --input {input.inp_dir} --output {output.pathcoverage_mat} --file_name pathcoverage && "
+		"humann_join_tables --input {params.inp_dir} --output {output.gene_fam_mat} --file_name genefamilies_cpm && "
+		"humann_join_tables --input {params.inp_dir} --output {output.pathabundance_mat} --file_name pathabundance_cpm && "
+		"humann_join_tables --input {params.inp_dir} --output {output.pathcoverage_mat} --file_name pathcoverage && "
 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
 		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"

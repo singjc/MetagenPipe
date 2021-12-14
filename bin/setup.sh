@@ -64,8 +64,12 @@ mamba install -c conda-forge papermill -y
 # humann_databases --download utility_mapping full /databases/humann --update-config yes
 # kneaddata_database --download human_genome bowtie2 /databases/kneaddata_human_bowtie2
 
+# force install dependency of boost-cpp
+# conda install -c conda-forge icu=68.1
+# force install boost-cpp library
+# mamba install -c conda-forge boost-cpp=1.70.0
 # force diamond version to that necessary for humann3
-mamba install -c bioconda -y diamond=0.9.36
+conda install -c bioconda -y diamond=0.9.36
 conda deactivate
 # kraken2 database
 
