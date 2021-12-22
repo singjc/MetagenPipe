@@ -1,0 +1,138 @@
+configfile: "humann3_wf_config.yaml"
+
+import os
+
+# setup params, inputs
+raw_data_dir = config["raw_data_dir"]
+run_ids, = glob_wildcards(raw_data_dir + "/{run}_1.fastq.gz")
+# run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
+#run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
+read_mate = ["1", "2"]
+master_output_dir=config["master_output_dir"]
+reads_subsample=config["reads_subsample"]
+seqtk_seed=config["seqtk_seed"]
+nthreads=config["nthreads"]
+logfile_suffix='_' + os.path.basename(master_output_dir)
+log_dir=config["log_dir"]
+
+
+rule all:
+	input:
+		"matrix.done"
+
+rule subsample_fastq:
+	input:
+		fastq = expand("/project/data/raw/SRA/{run}_{read_mate}.fastq.gz", run=run_ids, read_mate=read_mate)
+	output:
+		subsampled_fastq = temp(expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir))
+	params:
+		subsample_fraction=reads_subsample,
+		output_dir=expand("{master_output_dir}/raw_subsampled/", master_output_dir=master_output_dir),
+		nthreads=nthreads,
+		seqtk_seed=seqtk_seed
+	threads: nthreads
+	#conda:
+		#"envs/seqtk.yml"
+	log:
+		expand("{log_dir}/subsample_fastq{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"python /project/src/metagenpipe.py run-seqtk --subsample_fraction={params.subsample_fraction} --rng_seed={params.seqtk_seed} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+
+rule kneaddata:
+	input:
+		fastq = rules.subsample_fastq.output.subsampled_fastq,
+	output:
+		check=temp(touch("kneaddata.done")),
+		paired_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		unmatched_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_unmatched_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		paired_contam_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_hg37dec_v0.1_bowtie2_paired_contam_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		unmatched_contam_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_hg37dec_v0.1_bowtie2_unmatched_{read_mate}_contam.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		trimmed_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata.trimmed.{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		trimmed_single_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata.trimmed.single.{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)
+	params:
+		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
+		output_dir=expand("{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
+		trimmomatic="/src/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
+		nthreads=nthreads
+	threads: nthreads
+	#conda:
+		#"envs/kneaddata.yml"
+	log:
+		expand("{log_dir}/kneaddata{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"python /project/src/metagenpipe.py run-kneaddata --paired_end --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+# note: we are using unmatched fastq files here to see if we can run the pipeline on populated fastq files.
+# for some reason kneaddata is putting all the reads passing QC as unmatched 
+rule cat_files:
+	input:
+		fastq=rules.kneaddata.output.unmatched_fastq
+	output:
+		check=temp(touch("cat_files.done")),	
+		fastq_out = expand("{master_output_dir}/cat_files/{run}_seqt.subsampled_1_kneaddata_unmatched_concat.fastq", master_output_dir=master_output_dir, run=run_ids)
+	params:
+		output_dir=expand("{master_output_dir}/cat_files", master_output_dir=master_output_dir)
+	threads: nthreads
+	log:
+		expand("{log_dir}/cat_files{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"python /project/src/metagenpipe.py concat-reads --output_dir={params.output_dir} {input.fastq} &>> {log} &&"
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+
+rule humann3:
+	input:
+		fastq=rules.cat_files.output.fastq_out
+	output:
+		check=temp(touch("humann3.done")),
+		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_genefamilies_cpm.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_pathabundance_cpm.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathcoverage_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_unmatched_concat_pathcoverage.tsv", run=run_ids, master_output_dir=master_output_dir)
+	params:
+		output_dir=expand("{master_output_dir}/humann3", master_output_dir=master_output_dir),
+		nthreads=nthreads,
+		nucleotide_database="/project/data/raw/humann3_db/chocophlan",
+		protein_database="/project/data/raw/humann3_db/uniref"
+	threads: nthreads
+	log:
+		expand("{log_dir}/humann3{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"python /project/src/metagenpipe.py run-humann3 --output_dir={params.output_dir} --nthreads={params.nthreads} --nucleotide_database={params.nucleotide_database} --protein_database={params.protein_database} {input.fastq} &>> {log} &&"
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+
+rule matrix:
+	input:
+		check=rules.humann3.output.check,
+		
+	output:
+		check=temp(touch("matrix.done")),
+		# output_dir = expand("{master_output_dir}/humann3_merged", master_output_dir=master_output_dir),
+		gene_fam_mat = expand("{master_output_dir}/humann3_merged/humann3_genefamilies_cpm_joined.tsv", master_output_dir=master_output_dir),
+		pathabundance_mat = expand("{master_output_dir}/humann3_merged/humann3_pathabundance_cpm_joined.tsv", master_output_dir=master_output_dir),
+		pathcoverage_mat = expand("{master_output_dir}/humann3_merged/humann3_pathcoverage_joined.tsv", master_output_dir=master_output_dir)
+	params:
+		inp_dir=rules.humann3.params.output_dir
+	threads: nthreads
+	log:
+		expand("{log_dir}/humann3_matrix_{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+	shell:
+		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		# "if [[! -d {output.output_dir} ]]; then mkdir {output.output_dir} fi && "
+		"humann_join_tables --input {params.inp_dir} --output {output.gene_fam_mat} --file_name genefamilies_cpm && "
+		"humann_join_tables --input {params.inp_dir} --output {output.pathabundance_mat} --file_name pathabundance_cpm && "
+		"humann_join_tables --input {params.inp_dir} --output {output.pathcoverage_mat} --file_name pathcoverage && "
+		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+		"echo \"INFO: Process started on $start_dt\" &>> {log} &&"
+		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
