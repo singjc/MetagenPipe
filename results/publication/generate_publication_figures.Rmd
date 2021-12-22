@@ -46,22 +46,25 @@ library(phyloseq)
 
 <!-- Helper Functions -->
 ```{r}
-do_lm <- function(dt_sub, grouped_var, value_col="value", group_col="ACVD", group_ctrl="0", group_treat="1"){
+do_lm <- function(dt_sub, grouped_var, value_col="value", group_col="ACVD", group_ctrl="0", group_treat="1", use_model=lm, family=NULL){
   
   # print(sprintf("Working on: %s", grouped_var[[1]]))
   
   ctrl <- dt_sub[[value_col]][dt_sub[[group_col]]==group_ctrl]
   treat <- dt_sub[[value_col]][dt_sub[[group_col]]==group_treat]
+  # 
+  # ggplot(dt_sub, aes(x=!!rlang::sym(value_col), col=as.factor(!!rlang::sym(group_col)))) +
+  #       geom_density()
   
   # print(sprintf("nobs ctrl: %s, mean ctrl: %s | nobs treat: %s, mean treat: %s", length(ctrl), round(mean(ctrl, na.rm = T), 4), length(treat), round(mean(treat, na.rm = T), 4)))
   if ( (length(ctrl) > 1 & length(treat) > 1) & !all(is.na(ctrl)) & !all(is.na(treat)) ){
-    lm.out <- lm(value ~ as.factor(ACVD), dt_sub)
+    lm.out <- use_model(value ~ as.factor(ACVD), dt_sub, family=family)
     # interactions::interact_plot(lm.out, pred = value, modx = ACVD, plot.points = TRUE)
     # summary(lm.out)
     lm.out.df <- broom::tidy(lm.out)
     dt_sub$term <- lm.out.df$term[lm.out.df$term=="as.factor(ACVD)1"]
     dt_sub$pvalue <- lm.out.df$p.value[lm.out.df$term=="as.factor(ACVD)1"]
-    dt_sub$foldchange <- lm.out.df$estimate[lm.out.df$term=="as.factor(ACVD)1"]
+    dt_sub$foldchange<- lm.out.df$estimate[lm.out.df$term=="as.factor(ACVD)1"]
   } else {
     print(sprintf("WARN: Not Enough Observations to perform linear regression Returning NA"))
     dt_sub$term <- NA
@@ -129,10 +132,10 @@ ggplot(combined_df, aes(x=depth, y=total_feats, fill=depth)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Depth", y="Total Non-Zero Features") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=15)) +
   guides(fill="none") -> p1
 p1
 pfile <- "./results/publication/figures/insilico_sampling_depth_total_feats_per_sample.png"
@@ -146,10 +149,10 @@ ggplot(stats_df, aes(x=depth, y=union_feats, fill=depth)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Depth", y="Union Identified Features") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=15)) +
   guides(fill="none") -> p2
 p2
 pfile <- "./results/publication/figures/insilico_sampling_depth_union_feats_per_sample.png"
@@ -162,10 +165,10 @@ ggplot(stats_df, aes(x=depth, y=common_feats, fill=depth)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Depth", y="Overlapping Features") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=15)) +
   guides(fill="none") -> p3
 p3
 pfile <- "./results/publication/figures/insilico_sampling_depth_intersection_feats_per_sample.png"
@@ -178,10 +181,10 @@ ggplot(stats_df, aes(x=depth, y=jaccard, fill=depth)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Depth", y="Jaccard Distance") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=15)) +
   guides(fill="none") -> p4
 p4
 pfile <- "./results/publication/figures/insilico_sampling_depth_jaccard_feats_per_sample.png"
@@ -194,10 +197,10 @@ ggplot(stats_df, aes(x=depth, y=cor, fill=depth)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Depth", y="Pearson's Correlation") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=16)) +
   guides(fill="none") -> p5
 p5
 pfile <- "./results/publication/figures/insilico_sampling_depth_pearson_feats_per_sample.png"
@@ -218,10 +221,10 @@ ggplot(seed_combined_df, aes(x=seed, y=total_feats, fill=seed)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Seed", y="Total Non-Zero Features") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=16)) +
   guides(fill="none") -> p6
 p6
 pfile <- "./results/publication/figures/insilico_sampling_seed_total_feats_per_sample.png"
@@ -235,10 +238,10 @@ ggplot(seed_stats_df, aes(x=seed, y=union_feats, fill=seed)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Seed", y="Union Identified Features") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=16)) +
   guides(fill="none") -> p7
 p7
 pfile <- "./results/publication/figures/insilico_sampling_seed_union_feats_per_sample.png"
@@ -251,10 +254,10 @@ ggplot(seed_stats_df, aes(x=seed, y=common_feats, fill=seed)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Seed", y="Overlapping Features") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=16)) +
   guides(fill="none") -> p8
 p8
 pfile <- "./results/publication/figures/insilico_sampling_seed_intersection_feats_per_sample.png"
@@ -267,10 +270,10 @@ ggplot(seed_stats_df, aes(x=seed, y=jaccard, fill=seed)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Seed", y="Jaccard Distance") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=16)) +
   guides(fill="none") -> p9
 p9
 pfile <- "./results/publication/figures/insilico_sampling_seed_jaccard_feats_per_sample.png"
@@ -283,10 +286,10 @@ ggplot(seed_stats_df, aes(x=seed, y=cor, fill=seed)) +
   geom_boxplot() +
   labs(x="Insilico Sampling Seed", y="Pearson's Correlation") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        legend.title = element_text(size=15),
-        legend.text = element_text(size=14)) +
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=16)) +
   guides(fill="none") -> p10
 p10
 pfile <- "./results/publication/figures/insilico_sampling_seed_pearson_feats_per_sample.png"
@@ -297,20 +300,38 @@ ggsave(pfile, plot = p10, width = 15, height = 10, units = "in")
 ## Merged Plots {.tabset .tabset-fade .tabset-pills}
 ### Sampling Depth Experiments
 ```{r}
-pm1 <- ggpubr::ggarrange(plotlist = lapply(list(p1, p3, p4, p5), function(p){p+theme(plot.margin = unit(c(1.5,1.5,1.5,1.5), "cm"))}), labels=c("A", "B", "C", "D"), ncol=2, nrow=2)
+pm1 <- ggpubr::ggarrange(plotlist = lapply(list(p1, p3, p4, p5), function(p){p+theme(plot.margin = unit(c(1,1,1,1), "cm"))}), labels=c("A", "B", "C", "D"), ncol=2, nrow=2)
 pm1
 pfile <- "./results/publication/figures/insilico_sampling_depth_grid_plot.png"
 message(sprintf("Saved figure as: %s", pfile))
-ggsave(pfile, plot = pm1, width = 15, height = 10, units = "in")
+ggsave(pfile, plot = pm1, width = 15.5, height = 10, units = "in")
 ```
 
 ### Sampling Seed Experiments
 ```{r}
-pm2 <- ggpubr::ggarrange(plotlist = lapply(list(p6, p8, p9, p10), function(p){p+theme(plot.margin = unit(c(1.5,1.5,1.5,1.5), "cm"))}), labels=c("A", "B", "C", "D"), ncol=2, nrow=2)
+pm2 <- ggpubr::ggarrange(plotlist = lapply(list(p6, p8, p9, p10), function(p){p+theme(plot.margin = unit(c(1,1,1,1), "cm"))}), labels=c("A", "B", "C", "D"), ncol=2, nrow=2)
 pm2
 pfile <- "./results/publication/figures/insilico_sampling_seed_grid_plot.png"
 message(sprintf("Saved figure as: %s", pfile))
 ggsave(pfile, plot = pm2, width = 15, height = 10, units = "in")
+```
+
+### Differential Experession Analysis Grid Plots
+```{r}
+pm2 <- ggpubr::ggarrange(plotlist = lapply(list(ptax6, ptax2, pca1p, pca2p), function(p){p+theme(plot.margin = unit(c(1,1,1,1), "cm"))}), labels=c("A", "B", "C", "D"), ncol=2, nrow=2)
+pm2
+pfile <- "./results/publication/figures/50K_lm_de_figure_3_grid.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = pm2, width = 17, height = 15, units = "in")
+```
+
+### 50K ROC and PR
+```{r}
+pm2 <- ggpubr::ggarrange(plotlist = lapply(list(roc_p, pr_p), function(p){p+theme(plot.margin = unit(c(1,1,1,1), "cm"))}), labels=c("A", "B"), ncol=2, nrow=1)
+pm2
+pfile <- "./results/publication/figures/50K_roc_pr_grid.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = pm2, width = 15, height = 8, units = "in")
 ```
 
 # 50K Subsampling Experiment {.tabset .tabset-fade .tabset-pills}
@@ -334,6 +355,10 @@ feat_meta_csv <- data.table::fread(file_feat_meta_csv, select=2L, header=T)
 metadata_samples_keep <- data.table::fread(file_metadata_samples_keep)
 taxonomy_db <- data.table::fread(file_taxon_db)
 taxonomy_phylum_db <- taxonomy_db[ rank=="phylum"]
+runs_file <- "./data/all_runs.csv"
+runs_dt <- data.table::fread(runs_file)
+fwrite(runs_dt[ RunID %in% metadata_samples_keep$RunID ], "./data/run_accession_mapping.csv")
+fwrite(merge(runs_dt[ RunID %in% metadata_samples_keep$RunID ], metadata_samples_keep, by=c("RunID", "ExptAcc")), "./data/run_accession_clinical_data.csv")
 ```
 
 ## Differential Expression Linear Model
@@ -385,7 +410,7 @@ lm_prep %>%
   data.table::rbindlist() -> lm_dt
 
 lm_dt %>%
-  dplyr::select(feature, term, pvalue, foldchange) %>%
+  dplyr::select(feature, term, pvalue, foldchange, ) %>%
   unique() -> lm_dt
 
 # remove nas
@@ -406,7 +431,15 @@ lm_dt %>%
 lm_dt %>%
   dplyr::filter( fdr < 0.01 ) %>%
   dplyr::arrange( fdr) %>%
+  fwrite("./results/publication/tables/lm_de_significant_hits_at_0.01_fdr.csv")
+
+lm_dt %>%
+  dplyr::filter( fdr < 0.01 ) %>%
+  dplyr::arrange( fdr  ) %>%
   dplyr::pull(feature) -> sig_feats
+
+
+# sig_feats <- c("Streptococcus salivarius", "[Clostridium] innocuum", "Collinsella aerofaciens", "Ruthenibacterium lactatiformans", "Streptococcus parasanguinis", "Streptococcus pneumoniae", "Escherichia coli" )
 ```
 
 <!-- Create phyloseq object -->
@@ -437,7 +470,7 @@ run_id_to_acvd$Gender <- as.factor(run_id_to_acvd$Gender)
 ANN <- phyloseq::sample_data(run_id_to_acvd)
 TAX <- phyloseq::tax_table(feat_meta_phylum)
 physeq = phyloseq::phyloseq(OTU, TAX, ANN)
-acvd_label_map <- c("0"="Healthy Cohort", "1"="ACVD Cohort")
+acvd_label_map <- c("0"="Healthy\nCohort", "1"="ACVD\nCohort")
 ```
 
 ### Taxonomy classification
@@ -462,11 +495,16 @@ phyloseq::plot_bar(physeq, fill = "Class") +
   facet_wrap(~ ACVD, scales = "free_x", labeller=as_labeller(acvd_label_map)) +
   theme(panel.background = element_blank(),
         axis.text.x=element_blank(),
-        axis.ticks.x=element_blank()) -> ptax2
+        axis.ticks.x=element_blank(),
+        axis.title.y = element_text(size=18),
+        axis.text.y = element_text(size=17),
+        legend.title = element_text(size=18),
+        legend.text = element_text(size=16),
+        strip.text.x = element_text(size=18)) -> ptax2
 ptax2
 pfile <- "./results/publication/figures/50K_lm_0.01_fdr_class_classification.png"
 message(sprintf("Saved figure as: %s", pfile))
-ggsave(pfile, plot = ptax2, width = 15, height = 10, units = "in")
+ggsave(pfile, plot = ptax2, width = 11, height = 8, units = "in")
 ```
 
 ```{r}
@@ -514,15 +552,263 @@ ggsave(pfile, plot = ptax5, width = 15, height = 10, units = "in")
 ```{r}
 phyloseq::psmelt(physeq) %>%
   dplyr::filter(Species %in% sig_feats[1:6]) %>%
+  dplyr::mutate(Species = sub("\\s", "\n", Species)) %>%
+  dplyr::mutate(row = ifelse( (Species %in% c("[Ruminococcus]\ngnavus", "Alloprevotella\nsp. E39", "Clostridioides\ndifficile")), 1, 2)) %>%
+  ggplot(data = ., aes(x = ACVD, y = log2(Abundance))) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(color = Species), height = 0, width = .2, alpha=0.1) +
+  labs(x = "", y = "log2(Abundance)\n") +
+  scale_x_discrete(labels= c(`0`="Healthy\nCohort", `1`="ACVD\nCohort")) +
+  # facet_grid(row ~ Species, scales = "free") + 
+  facet_wrap( ~ Species, scales = "free") + 
+  theme(axis.title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.title = element_text(size=18),
+        legend.text = element_text(size=17),
+        strip.text.x = element_text(size=16)) +
+  guides(color="none") -> ptax6
+ptax6
+pfile <- "./results/publication/figures/50K_lm_0.01_fdr_6_species_boxplot.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax6, width = 12, height = 8, units = "in")
+
+phyloseq::psmelt(physeq) %>%
+  dplyr::filter(Species %in% sig_feats[7:12]) %>%
+  ggplot(data = ., aes(x = ACVD, y = log2(Abundance))) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(color = Species), height = 0, width = .2, alpha=0.1) +
+  labs(x = "", y = "Abundance\n") +
+  scale_x_discrete(labels= c(`0`="Healthy Cohort", `1`="ACVD Cohort")) +
+  facet_wrap(~ Species, scales = "free") -> ptax7
+ptax7
+pfile <- "./results/publication/figures/50K_lm_0.01_fdr_6_species_boxplot2.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax7, width = 15, height = 10, units = "in")
+```
+
+```{r}
+feat_meta_phylum %>%
+  as.data.frame() %>%
+  # dplyr::filter( Species %in% sig_feats ) %>%
+  dplyr::filter( Genus %in% "Bacteroides" ) %>%
+  dplyr::pull(Species) -> sig_bacterioides
+
+lm_dt %>%
+  dplyr::filter( feature %in% sig_bacterioides) %>%
+  dplyr::arrange(fdr)
+  dplyr::select( Species=feature, pvalue, foldchange, fdr) %>%
+  fwrite("./results/publication/tables/lm_de_significant_hits_at_0.01_fdr_bacterioides.csv")
+
+phyloseq::psmelt(subset_taxa(physeq, Genus == "Bacteroides")) %>%
+  dplyr::filter(Species %in% sig_bacterioides[c(1,2,5)]) %>%
+  dplyr::filter(Abundance!=0) %>%
+  ggplot(data = ., aes(x = ACVD, y = log2(Abundance))) +
+  # ggplot(data = ., aes(fill = ACVD, x = log2(Abundance))) +
+  geom_density(alpha=0.3) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(color = Genus), height = 0, width = .2, alpha=0.1) +
+  labs(x = "", y = "Abundance\n") +
+  scale_x_discrete(labels= c(`0`="Healthy Cohort", `1`="ACVD Cohort")) +
+  facet_wrap(~ Genus, scales = "free") +
+  # facet_wrap(~ Species, scales = "free") +
+  # facet_wrap( Species ~ Gender, scales = "free") +
+  theme(axis.title = element_text(size=16),
+        axis.text = element_text(size=15),
+        legend.title = element_text(size=15),
+        legend.text = element_text(size=14),
+        strip.text.x = element_text(size=15)) -> ptax8
+ptax8
+pfile <- "./results/publication/figures/50K_lm_0.01_fdr_bacterioides_species_boxplot.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax8, width = 15, height = 10, units = "in")
+```
+
+```{r}
+phyloseq::plot_bar(subset_taxa(physeq, Genus == "Bacteroides"), fill = "Genus") +
+  geom_bar(aes(color = Genus, fill = Genus), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  facet_wrap(~ ACVD, scales = "free_x", labeller=as_labeller(acvd_label_map)) +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) -> ptax9
+ptax9
+pfile <- "./results/publication/figures/50K_lm_0.01_fdr_genus_bacterioides_classification.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax9, width = 15, height = 10, units = "in")
+```
+
+## Differential Expression Poisson Regression
+```{r}
+# Transpose and convert to matrix
+X_t <- as.matrix(t(X))
+colnames(X_t) <- metadata_samples_keep$RunID
+rownames(X_t) <- feat_meta_csv$feature
+# Create Sample Annotation mapping
+run_id_to_acvd <- metadata_samples_keep[, .(RunID, ACVD=`ACVD status`, Gender, height=`Height (cm)`, bmi=`Body Mass Index (BMI)`)]
+run_id_to_acvd$age_group <- unlist(lapply(metadata_samples_keep$`Age (year)`, bin_age))
+run_id_to_acvd %>%
+  head() %>%
+  knitr::kable(caption = "Head Sample Annotation Map")
+# Prepare long dt with sample annotation
+X_t %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var="feature") %>%
+  tidyr::pivot_longer(cols=colnames(X_t)) %>%
+  dplyr::mutate(value=log2(value+1)) %>%
+  merge(run_id_to_acvd, by.x="name", by.y="RunID") -> lm_prep
+```
+
+Looking at the distribution of the log transformed data, using a linear model probably isn't the best or right test, but it still returns some interesting hits?
+
+```{r}
+# Run linear model
+lm_prep %>%
+  dplyr::group_by(feature) %>%
+  dplyr::group_map(~ do_lm(dt_sub = .x, grouped_var = .y, use_model = glm, family = "quasipoisson"), .keep=TRUE) %>%
+  data.table::rbindlist() -> lm_dt
+
+lm_dt %>%
+  dplyr::select(feature, term, pvalue, foldchange) %>%
+  unique() -> lm_dt2
+
+# remove nas
+lm_dt2 <- lm_dt2[ !is.na(lm_dt2$pvalue), ]
+
+hist(lm_dt2$pvalue, )
+
+# Multiple Testing correction
+lm_dt2$fdr <- p.adjust(lm_dt2$pvalue, method="fdr")
+
+hist(lm_dt2$fdr)
+
+lm_dt2 %>%
+  dplyr::filter( fdr < 0.01 ) %>%
+  dplyr::arrange( fdr) %>%
+  knitr::kable(caption = "Head Significant Features at 1% FDR")
+
+ggplot(lm_dt2 , aes(x=foldchange, y=-log10(fdr))) +
+  geom_point()
+
+lm_dt2 %>%
+  dplyr::filter( fdr < 0.01 ) %>%
+  dplyr::arrange( fdr) %>%
+  dplyr::pull(feature) -> sig_feats
+```
+
+<!-- Create phyloseq object -->
+```{r}
+# Filter Freq data for only the identified significant features identified by lm
+X_t <- X_t[ rownames(X_t) %in% sig_feats, ]
+rownames(X_t) <- paste0("OTU", 1:nrow(X_t))
+# Create species feature to phylum mapping table
+feat_meta_phylum <- as.matrix(plyr::mapvalues(sig_feats, from=taxonomy_phylum_db$query, to=taxonomy_phylum_db$name, warn_missing = FALSE))
+feat_meta_phylum[feat_meta_phylum %in% feat_meta_csv$feature] <- "Unknown"
+colnames(feat_meta_phylum) <- "Phylum"
+rownames(feat_meta_phylum) <- paste0("OTU", 1:nrow(X_t))
+feat_meta_genus <- plyr::mapvalues(sig_feats, from=taxonomy_db[ rank=="genus"]$query, to=taxonomy_db[ rank=="genus"]$name, warn_missing = FALSE)
+feat_meta_genus[feat_meta_genus %in% feat_meta_csv$feature] <- "Unknown"
+feat_meta_class <- plyr::mapvalues(sig_feats, from=taxonomy_db[ rank=="class"]$query, to=taxonomy_db[ rank=="class"]$name, warn_missing = FALSE)
+feat_meta_class[feat_meta_class %in% feat_meta_csv$feature] <- "Unknown"
+feat_meta_order <- plyr::mapvalues(sig_feats, from=taxonomy_db[ rank=="order"]$query, to=taxonomy_db[ rank=="order"]$name, warn_missing = FALSE)
+feat_meta_order[feat_meta_order %in% feat_meta_csv$feature] <- "Unknown"
+feat_meta_family <- plyr::mapvalues(sig_feats, from=taxonomy_db[ rank=="family"]$query, to=taxonomy_db[ rank=="family"]$name, warn_missing = FALSE)
+feat_meta_family[feat_meta_family %in% feat_meta_csv$feature] <- "Unknown"
+feat_meta_phylum <- cbind(feat_meta_phylum, Class=feat_meta_class, Order=feat_meta_order, Family=feat_meta_family, Genus=feat_meta_genus, Species=sig_feats)
+# Create phyloseq object
+OTU <- phyloseq::otu_table(X_t, taxa_are_rows = T)
+run_id_to_acvd <- as.data.frame(run_id_to_acvd)
+rownames(run_id_to_acvd) <- run_id_to_acvd[,1]
+run_id_to_acvd$ACVD <- as.factor(run_id_to_acvd$ACVD)
+run_id_to_acvd$Gender <- as.factor(run_id_to_acvd$Gender)
+ANN <- phyloseq::sample_data(run_id_to_acvd)
+TAX <- phyloseq::tax_table(feat_meta_phylum)
+physeq = phyloseq::phyloseq(OTU, TAX, ANN)
+acvd_label_map <- c("0"="Healthy Cohort", "1"="ACVD Cohort")
+```
+
+### Taxonomy classification
+```{r}
+phyloseq::plot_bar(physeq, fill = "Phylum") +
+  geom_bar(aes(color = Phylum, fill = Phylum), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  facet_wrap(~ ACVD, scales = "free_x", labeller=as_labeller(acvd_label_map)) +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) -> ptax1_quasipoisson
+ptax1_quasipoisson
+pfile <- "./results/publication/figures/50K_quasipoisson_0.01_fdr_phylum_classification.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax1_quasipoisson, width = 15, height = 10, units = "in")
+```
+
+```{r}
+phyloseq::plot_bar(physeq, fill = "Class") +
+  geom_bar(aes(color = Class, fill = Class), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  facet_wrap(~ ACVD, scales = "free_x", labeller=as_labeller(acvd_label_map)) +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) -> ptax2_quasipoisson
+ptax2_quasipoisson
+pfile <- "./results/publication/figures/50K_quasipoisson_0.01_fdr_class_classification.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax2_quasipoisson, width = 15, height = 10, units = "in")
+```
+
+```{r}
+phyloseq::plot_bar(physeq, fill = "Order") +
+  geom_bar(aes(color = Order, fill = Order), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  facet_wrap(~ ACVD, scales = "free_x", labeller=as_labeller(acvd_label_map)) +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) -> ptax3_quasipoisson
+ptax3_quasipoisson
+pfile <- "./results/publication/figures/50K_quasipoisson_0.01_fdr_order_classification.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax3_quasipoisson, width = 15, height = 10, units = "in")
+```
+
+```{r}
+phyloseq::plot_bar(physeq, fill = "Family") +
+  geom_bar(aes(color = Family, fill = Family), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  facet_wrap(~ ACVD, scales = "free_x", labeller=as_labeller(acvd_label_map)) +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) -> ptax4_quasipoisson
+ptax4_quasipoisson
+pfile <- "./results/publication/figures/50K_quasipoisson_0.01_fdr_family_classification.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax4_quasipoisson, width = 15, height = 10, units = "in")
+```
+
+```{r}
+phyloseq::plot_bar(physeq, fill = "Genus") +
+  geom_bar(aes(color = Genus, fill = Genus), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  facet_wrap(~ ACVD, scales = "free_x", labeller=as_labeller(acvd_label_map)) +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) -> ptax5_quasipoisson
+ptax5_quasipoisson
+pfile <- "./results/publication/figures/50K_quasipoisson_0.01_fdr_genus_classification.png"
+message(sprintf("Saved figure as: %s", pfile))
+ggsave(pfile, plot = ptax5_quasipoisson, width = 15, height = 10, units = "in")
+```
+
+```{r}
+phyloseq::psmelt(physeq) %>%
+  dplyr::filter(Species %in% sig_feats[1:6]) %>%
   ggplot(data = ., aes(x = ACVD, y = Abundance)) +
   geom_boxplot(outlier.shape  = NA) +
   geom_jitter(aes(color = Species), height = 0, width = .2, alpha=0.1) +
   labs(x = "", y = "Abundance\n") +
-  facet_wrap(~ Species, scales = "free") -> ptax6
-ptax6
-pfile <- "./results/publication/figures/50K_lm_0.01_fdr_6_species_boxplot.png"
+  facet_wrap(~ Species, scales = "free") -> ptax6_quasipoisson
+ptax6_quasipoisson
+pfile <- "./results/publication/figures/50K_quasipoisson_0.01_fdr_6_species_boxplot.png"
 message(sprintf("Saved figure as: %s", pfile))
-ggsave(pfile, plot = ptax6, width = 15, height = 10, units = "in")
+ggsave(pfile, plot = ptax6_quasipoisson, width = 15, height = 10, units = "in")
 
 phyloseq::psmelt(physeq) %>%
   dplyr::filter(Species %in% sig_feats[7:12]) %>%
@@ -530,11 +816,11 @@ phyloseq::psmelt(physeq) %>%
   geom_boxplot(outlier.shape  = NA) +
   geom_jitter(aes(color = Species), height = 0, width = .2, alpha=0.1) +
   labs(x = "", y = "Abundance\n") +
-  facet_wrap(~ Species, scales = "free") -> ptax7
-ptax7
-pfile <- "./results/publication/figures/50K_lm_0.01_fdr_6_species_boxplot2.png"
+  facet_wrap(~ Species, scales = "free") -> ptax7_quasipoisson
+ptax7_quasipoisson
+pfile <- "./results/publication/figures/50K_quasipoisson_0.01_fdr_6_species_boxplot2.png"
 message(sprintf("Saved figure as: %s", pfile))
-ggsave(pfile, plot = ptax7, width = 15, height = 10, units = "in")
+ggsave(pfile, plot = ptax7_quasipoisson, width = 15, height = 10, units = "in")
 ```
 
 ## Hierarchical Clustering
@@ -604,10 +890,10 @@ ggplot() +
   # geom_vline(xintercept=0.05, color="red", linetype="dotted") +
   labs(x="False Positive Rate", y="True Positive Rate", color="") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
         # legend.title = element_text(size=15),
-        legend.text = element_text(size=15),
+        legend.text = element_text(size=17),
         legend.justification=c(1,0), 
            legend.position=c(0.98, 0.03),  
            legend.background = element_blank(),
@@ -615,7 +901,7 @@ ggplot() +
 roc_p
 pfile <- "./results/publication/figures/50K_roc.png"
 message(sprintf("Saved figure as: %s", pfile))
-ggsave(pfile, plot = roc_p, width = 15, height = 10, units = "in")
+ggsave(pfile, plot = roc_p, width = 9, height = 6, units = "in")
 ```
 
 ## Precision-Recall Curve
@@ -658,18 +944,19 @@ ggplot() +
                      values = c('#F8766D', '#D89000', '#A3A500', '#39B600', '#00BF7D', '#00BFC4', '#00B0F6', '#9590FF', '#E76BF3', '#FF62BC', "blue")) +
   labs(x="Recall", y="Precision") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
         # legend.title = element_text(size=15),
-        legend.text = element_text(size=15),
+        legend.title = element_blank(),
+        legend.text = element_text(size=17),
         legend.justification=c(1,0), 
-           legend.position=c(0.35, 0.03),  
+           legend.position=c(0.75, 0.03),  
            legend.background = element_blank(),
            legend.key = element_blank()) -> pr_p
 pr_p
 pfile <- "./results/publication/figures/50K_pr.png"
 message(sprintf("Saved figure as: %s", pfile))
-ggsave(pfile, plot = pr_p, width = 15, height = 10, units = "in")
+ggsave(pfile, plot = pr_p, width = 9, height = 6, units = "in")
 ```
 
 ## PCA
@@ -687,14 +974,14 @@ ggplot(pca_dt, aes(x=PC1, y=PC2, col=`ACVD status`)) +
                      values = c("0"="blue", "1"="red")) +
   labs(x=sprintf("PC1 (%s%%)", round(total_var_explained[1],4)*100), y=sprintf("PC2 (%s%%)", round(total_var_explained[2],4)*100)) +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        # legend.title = element_text(size=15),
-        legend.text = element_text(size=15)) -> pca1p
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=18),
+        legend.text = element_text(size=17)) -> pca1p
 pca1p
 pfile <- "./results/publication/figures/50K_pca1p.png"
 message(sprintf("Saved figure as: %s", pfile))
-ggsave(pfile, plot = pca1p, width = 15, height = 10, units = "in")
+ggsave(pfile, plot = pca1p, width = 10, height = 7, units = "in")
 
 # Generate Plot for PC2-PC3
 ggplot(pca_dt, aes(x=PC3, y=PC2, col=`ACVD status`)) +
@@ -703,14 +990,14 @@ ggplot(pca_dt, aes(x=PC3, y=PC2, col=`ACVD status`)) +
                      values = c("0"="blue", "1"="red")) +
   labs(x=sprintf("PC3 (%s%%)", round(total_var_explained[3],4)*100), y=sprintf("PC2 (%s%%)", round(total_var_explained[2],4)*100)) +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=15),
-        # legend.title = element_text(size=15),
-        legend.text = element_text(size=15)) -> pca2p
+        axis.title = element_text(size=18),
+        axis.text = element_text(size=17),
+        legend.title = element_text(size=18),
+        legend.text = element_text(size=17)) -> pca2p
 pca2p
 pfile <- "./results/publication/figures/50K_pca2p.png"
 message(sprintf("Saved figure as: %s", pfile))
-ggsave(pfile, plot = pca2p, width = 15, height = 10, units = "in")
+ggsave(pfile, plot = pca2p, width = 10, height = 7, units = "in")
 
 # Generate Plot for PC3-PC4
 ggplot(pca_dt, aes(x=PC3, y=PC4, col=`ACVD status`)) +
@@ -736,5 +1023,23 @@ plotly::plot_ly(data=pca_dt, x=~PC1, y=~PC2, z=~PC3, type="scatter3d", mode="mar
          yaxis = list(title = sprintf("PC2 (%s%%)", round(total_var_explained[2],4)*100)), 
          zaxis = list(title = sprintf("PC3 (%s%%)", round(total_var_explained[3],4)*100)),
          legend = list(title=list(text='<b> ACVD status </b>')))
+```
+
+
+
+# Expeirment and Accessions Used Table
+```{r}
+freq_matrix_50k <- fread("./workflow/PE_subsampling_experiments/insilico_depth_experiment/kraken2_PE_50K/matrix/freq_mat.csv")
+sra_accession_file <- fread("./data/all_runs.csv")
+clinical_paramters_file <- fread("./data/Jie_2017_supp_table_1.csv")
+
+used_accessions <- gsub( "^(ERR\\d+)_.*" ,"\\1", freq_matrix_50k$filename)
+
+sra_accession_file %>%
+  dplyr::filter(RunID %in% used_accessions) %>%
+  dplyr::select(RunID, ExptAcc, `Sample ID`=Alias) %>%
+  merge(clinical_paramters_file, by="Sample ID") %>%
+  fwrite("./results/publication/tables/table_1.csv")
+
 ```
 
