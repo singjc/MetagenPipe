@@ -28,7 +28,7 @@ mamba install  -y -c bioconda python=3.7 metaphlan
 # installs wrapper for fastq dumbps
 mamba install -y -c bioconda bioinfokit
 # installs kneaddata for preprocessing
-mamba install -c bioconda kneaddata
+mamba install -y -c bioconda kneaddata=0.7.4
 # >>>>>>> 4714571382e3946538c526bb6d4e7819b9bf1cbe
 # installs humann2 for pan-genome profiling
 mamba install humann -c biobakery -y
@@ -52,7 +52,7 @@ mamba install openpyxl -y
 mamba install pytorch -y
 mamba install -c anaconda beautifulsoup4 -y
 mamba install lxml -y
-mamba install -c bioconda seqtk -y
+mamba install -c bioconda seqtk=1.3 -y
 mamba install -c conda-forge bioconda::snakemake -y
 mamba install -c conda-forge papermill -y
 
