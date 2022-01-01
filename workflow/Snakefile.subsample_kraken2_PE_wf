@@ -56,7 +56,7 @@ rule kneaddata:
 	params:
 		reference_db="/project/data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
 		output_dir=expand("{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
-		trimmomatic="/root/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
+		trimmomatic="/src/anaconda/envs/microbiome/share/trimmomatic-0.39-2",
 		nthreads=nthreads
 	threads: nthreads
 	#conda:

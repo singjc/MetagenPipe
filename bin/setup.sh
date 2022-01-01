@@ -28,7 +28,7 @@ mamba install  -y -c bioconda python=3.7 metaphlan
 # installs wrapper for fastq dumbps
 mamba install -y -c bioconda bioinfokit
 # installs kneaddata for preprocessing
-mamba install -c bioconda kneaddata
+mamba install -y -c bioconda kneaddata=0.7.4
 # >>>>>>> 4714571382e3946538c526bb6d4e7819b9bf1cbe
 # installs humann2 for pan-genome profiling
 mamba install humann -c biobakery -y
@@ -52,7 +52,7 @@ mamba install openpyxl -y
 mamba install pytorch -y
 mamba install -c anaconda beautifulsoup4 -y
 mamba install lxml -y
-mamba install -c bioconda seqtk -y
+mamba install -c bioconda seqtk=1.3 -y
 mamba install -c conda-forge bioconda::snakemake -y
 mamba install -c conda-forge papermill -y
 
@@ -64,8 +64,12 @@ mamba install -c conda-forge papermill -y
 # humann_databases --download utility_mapping full /databases/humann --update-config yes
 # kneaddata_database --download human_genome bowtie2 /databases/kneaddata_human_bowtie2
 
+# force install dependency of boost-cpp
+# conda install -c conda-forge icu=68.1
+# force install boost-cpp library
+# mamba install -c conda-forge boost-cpp=1.70.0
 # force diamond version to that necessary for humann3
-mamba install -c bioconda -y diamond=0.9.36
+conda install -c bioconda -y diamond=0.9.36
 conda deactivate
 # kraken2 database
 
