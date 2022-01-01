@@ -2,8 +2,8 @@
 # set for failure on any error
 set -e
 # Activate Conda env
-source /src/anaconda/etc/profile.d/conda.sh
-conda activate microbiome
+# source /src/anaconda/etc/profile.d/conda.sh
+# conda activate microbiome
 
 
 
@@ -50,18 +50,20 @@ fi
 # snakemake --snakefile Snakefile.sradownload_wf -j 2
 #snakemake --snakefile Snakefile.sradownload_subs_wf -j 2
 
-# humann3 workflow
-snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
 
 # Preprocessing Workflow
 
-# snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=50000
-# snakemake --snakefile Snakefile.subsample_kraken2_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_PE" reads_subsample=50000
+# snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=100000
+#snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE_microbiome_ubuntu20" reads_subsample=100000 
+snakemake --snakefile Snakefile.subsample_kraken2_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_PE" reads_subsample=50000
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 # to unlock directory
 # snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True
 
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
+
+# humann3 workflow
+snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
 
 # to run at various depths
 
@@ -88,4 +90,5 @@ snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
 # papermill workflow with data preparation + analyses separated
 # snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1
 
-conda deactivate
+# conda deactivate
+
