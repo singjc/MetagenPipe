@@ -237,18 +237,20 @@ def parse_metaphlan_file( input_file ):
     rel_abundance = input.iloc[:, 2].to_numpy().astype('float32')
     species_idx = np.where(np.array([re.search('s__', x) is not None for x in taxa]))[0]
     dict_out = {}
-    for i in species_idx:
-        taxa_name = taxa[i]
-        dict_out[taxa_name] = np.array([rel_abundance[i]]).astype('float32')
+
+    if len(species_idx) > 0:
+        for i in species_idx:
+            taxa_name = taxa[i]
+            dict_out[taxa_name] = np.array([rel_abundance[i]]).astype('float32')
     # get rid of file ending for row name for output dataframe
     row_name = re.sub('\\.[A-z0-9]+', '', os.path.basename(input_file))
     pd_df_out = pd.DataFrame(dict_out, index=row_name)
-    try:
-        # check that relative abundance sums to 100 percent
-        total_pct = pd_df_out.to_numpy(dtype='float32').sum()
-        assert np.equal(total_pct, 100.0)
-    except:
-        raise ValueError('total relative abundance ' + total_pct + ' is not 100.0')
+    # try:
+    #     # check that relative abundance sums to 100 percent
+    #     total_pct = pd_df_out.to_numpy(dtype='float32').sum()
+    #     assert np.equal(total_pct, 100.0)
+    # except:
+    #     raise ValueError('total relative abundance ' + total_pct + ' is not 100.0')
 
     return pd_df_out
 
