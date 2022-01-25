@@ -55,15 +55,16 @@ fi
 
 # snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=100000
 #snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE_microbiome_ubuntu20" reads_subsample=100000 
-snakemake --snakefile Snakefile.subsample_kraken2_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_PE" reads_subsample=50000
+# snakemake --snakefile Snakefile.subsample_kraken2_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_PE" reads_subsample=50000
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 # to unlock directory
 # snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True
+snakemake --snakefile Snakefile.metaphlan_parse_wf -j 1
 
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
 
 # humann3 workflow
-snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
+# snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
 
 # to run at various depths
 
