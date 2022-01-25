@@ -258,6 +258,7 @@ def parse_metaphlan_multi( inp_files, output_dir='./', outfile='relative_abundan
             df_i = df_i.loc[:, sorted_cols]
             df_c = df_c.append(df_i)
 
+    df_c['file_name'] = inp_files
     df_c.to_csv(os.path.join(output_dir, outfile))
 
 
