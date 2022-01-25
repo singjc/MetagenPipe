@@ -1,0 +1,5 @@
+inp_mat_file: '/project/data/raw/jie_rerun_50K/matrix_kraken2/freq_mat.csv'
+master_output_dir: '/project/workflow/results/papermill_jie_50k_rerun'
+metadata_file: '/project/data/raw/Jie_2017_supp_table_1.xlsx'
+identifiers_file: '/project/data/raw/jie_rerun_50K/all_runs.csv'
+log_dir: '/project/workflow/logs'

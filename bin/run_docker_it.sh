@@ -8,4 +8,4 @@ working_dir=${1:-`pwd`}
 # on host OS location, and will be visible on host OS
 #docker run -v $working_dir:/project -p 8888:8888 -p 2200:22 -it whitleyo/microbiome_ubuntu20:dev
 #docker run -v $working_dir:/project -p 8888:8888 -p 2200:22 -it whitleyo/microbiome_ubuntu20:latest
-docker run -v $working_dir:/project -p 8888:8888 -p 2200:22 -it microbiome_ubuntu20:latest
+docker run -v $working_dir:/project -p 8888:8888 -p 2200:22 -it whitleyo/microbiome_ubuntu20:jan_2022

@@ -230,36 +230,29 @@ def parse_metaphlan_multi( inp_files, output_dir='./', outfile='relative_abundan
     :param output_dir: output directory to store matrix
     :return: writes matrix to file
     """
-    for i in range(len(inp_files)):
-        input_file_i = inp_files[i]
-        df_i = parse_metaphlan_file(input_file_i)
-        if i == 0:
-            # df_c = dataframe, combined
-            df_c = df_i
+
+    m = 0
+
+    for f in inp_files:
+        df = parse_metaphlan_file(f)
+        if df.shape[0] > 0:
+            df['filename'] = np.repeat(os.path.basename(f), df.shape[0])
         else:
-            cols_c = df_c.columns.to_numpy().astype('str')
-            cols_i = df_i.columns.to_numpy().astype('str')
-            diff_c_i = np.setdiff1d(cols_c, cols_i)
-            diff_i_c = np.setdiff1d(cols_i, cols_c)
-            if len(diff_c_i) > 0:
-                for j in len(diff_c_i):
-                    diff_c_i_j = diff_c_i[j]
-                    df_i[diff_c_i_j] = np.array([0.0], dtype='float32')
+            warn('file {} lacks any detected taxa, skipping'.format(f))
+            continue
 
-            if len(diff_i_c) > 0:
-                for j in len(diff_i_c):
-                    diff_i_c_j = diff_i_c[j]
-                    df_c[diff_i_c_j] = np.array([0.0], dtype='float32')
-            # put columns in correct order, then append.
-            # by end of 2 if statements, both df_c and df_i should have
-            # same columns
-            sorted_cols = df_c.columns.to_numpy().astype('str').sort()
-            df_c = df_c.loc[:, sorted_cols]
-            df_i = df_i.loc[:, sorted_cols]
-            df_c = df_c.append(df_i)
+        if m == 0:
+            m += 1
+            master_df = df
+        else:
+            master_df = master_df.append(df)
 
-    df_c.to_csv(os.path.join(output_dir, outfile))
+    freq_df = master_df.loc[:, ['freq', 'tax_name', 'filename']]
 
+    click.echo(f"INFO: freq_df shape:{freq_df.shape}")
+    print(freq_df.head())
+    freq_mat_df = freq_df.pivot(index='filename', columns='tax_name', values='freq')
+    freq_mat_df.to_csv(os.path.join(output_dir, outfile))
 
 @cli.command()
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
@@ -293,7 +286,11 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
         tax_level = df['tax_level'].to_numpy().astype('str')
         idx_keep = np.array([re.match(tax_level_select, x) is not None for x in tax_level])
         df = df.iloc[idx_keep, :]
-        df['filename'] = np.repeat(os.path.basename(f), df.shape[0])
+        if df.shape[0] > 0:
+            df['filename'] = np.repeat(os.path.basename(f), df.shape[0])
+        else:
+            warn('file {} lacks any detected taxa, skipping'.format(f))
+            continue
 
         if m == 0:
             m += 1
