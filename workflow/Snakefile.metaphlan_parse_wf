@@ -1,0 +1,36 @@
+configfile: "kraken2_wf_config.yaml"
+
+import os
+
+# setup params, inputs
+raw_data_dir = '/project/data/raw/jie_fulldata/metaphlan_profiles'
+master_output_dir = '/project/data/preprocessed/jie_full_data_metaphlan'
+run_ids, = glob_wildcards(raw_data_dir + "/{run}_kneaddata.trimmed_profile.txt")
+log_dir='/project/workflow/logs'
+logfile_suffix='_' + os.path.basename(master_output_dir)
+
+rule all:
+	input:
+		"matrix.done"
+
+rule matrix:
+	input:
+		freq_files = expand("{raw_data_dir}/{run}_kneaddata.trimmed_profile.txt", raw_data_dir=raw_data_dir, run=run_ids)
+	output:
+		check=temp(touch("matrix.done")),
+		freq_mat = expand("{master_output_dir}/freq_mat.csv", master_output_dir=master_output_dir)
+	params:
+		output_dir = expand("{master_output_dir}", master_output_dir=master_output_dir),
+		freq_mat = "freq_mat.csv"
+	log:
+		expand("{log_dir}/matrix{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+	shell:
+ 		"start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+ 		"python /project/src/metagenpipe.py parse-metaphlan-multi --output_dir={params.output_dir} --outfile={params.freq_mat} {input.freq_files} &>> {log} && "
+ 		"end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+ 		"echo \"INFO: Process started on $start_dt\" &>> {log} && "
+ 		"echo \"INFO: Process finished on $end_dt\" &>> {log}"
+
+
+
+
