@@ -37,6 +37,7 @@ rule papermill_compile:
         expand("{log_dir}/papermill_compile{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
     shell:
         "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "echo ${input.inp_mat_file} && "
         "preproc_dir=\"{params.master_output_dir}/prepped_data\" && "
         "notebook_dir=\"{params.notebook_output_dir}\" && "
         "if [[ ! -d {params.master_output_dir} ]] ; then mkdir {params.master_output_dir} ; fi && "
@@ -45,10 +46,10 @@ rule papermill_compile:
         "LR_DE_clinical_output_dir=\"{params.master_output_dir}/LR_DE_clinical\" && "
         "LR_clincal_output_dir=\"{params.master_output_dir}/LR_clinical\" && "
         "papermill {params.data_select_file} \"${{notebook_dir}}/prep_data.ipynb\"  -p inp_mat_file {input.inp_mat_file} -p metadata_file {input.metadata_file} -p identifiers_file {input.identifiers_file} -p output_dir $preproc_dir -p overwrite {params.retrain} &>> {log} && "
-        "papermill {params.LR_DE_file} \"${{notebook_dir}}/LR_DE.ipynb\"  -p inp_dir $preproc_dir -p output_dir $LR_DE_output_dir -p retrain {params.retrain} -p fdr_de  {params.fdr} &>> {log} && "
-        "papermill {params.LR_DE_clinical_file} \"${{notebook_dir}}/LR_DE_w_clinical.ipynb\" -p inp_dir $preproc_dir -p output_dir $LR_DE_clinical_output_dir -p retrain {params.retrain} -p fdr_de {params.fdr} &>> {log} && "
-        "papermill {params.LR_clinical_file} \"${{notebook_dir}}/LR_clinical.ipynb\"  -p inp_dir $preproc_dir -p output_dir $LR_clincal_output_dir -p retrain {params.retrain} &>> {log} && "
-        "papermill {params.PCA_file} \"${{notebook_dir}}/PCA.ipynb\"  -p inp_dir $preproc_dir -p fdr_de {params.fdr} &>> {log} && "
+        "papermill {params.LR_DE_file} \"${{notebook_dir}}/LR_DE.ipynb\"  -p input_dir $preproc_dir -p output_dir $LR_DE_output_dir -p retrain {params.retrain} -p fdr_de  {params.fdr} &>> {log} && "
+        "papermill {params.LR_DE_clinical_file} \"${{notebook_dir}}/LR_DE_w_clinical.ipynb\" -p input_dir $preproc_dir -p output_dir $LR_DE_clinical_output_dir -p retrain {params.retrain} -p fdr_de {params.fdr} &>> {log} && "
+        "papermill {params.LR_clinical_file} \"${{notebook_dir}}/LR_clinical.ipynb\"  -p input_dir $preproc_dir -p output_dir $LR_clincal_output_dir -p retrain {params.retrain} &>> {log} && "
+        "papermill {params.PCA_file} \"${{notebook_dir}}/PCA.ipynb\"  -p input_dir $preproc_dir -p fdr_de {params.fdr} &>> {log} && "
         "end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
         "echo \"INFO: Process started on $start_dt\" &>> {log} && "
         "echo \"INFO: Process finished on $end_dt\" &>> {log}"
