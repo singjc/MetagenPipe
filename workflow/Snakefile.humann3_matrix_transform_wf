@@ -1,0 +1,37 @@
+configfile: "humann3_matrix_transform_config.yaml"
+
+import os
+
+master_output_dir=config["master_output_dir"]
+gene_family=config["gene_family"]
+path_abundance=config["path_abundance"]
+path_coverage = config["path_coverage"]
+logfile_suffix='_' + os.path.basename(master_output_dir)
+log_dir=config["log_dir"]
+
+
+rule all:
+	input:
+		"matrix.done"
+
+rule matrix:
+    input:
+        gene_family = gene_family,
+        path_abundance = path_abundance,
+        path_coverage = path_coverage
+    output:
+        check=temp(touch("matrix.done"))
+    params:
+        master_output_dir = master_output_dir
+    log:
+        expand("{log_dir}/humann3_matrix_transform{logfile_suffix}.log", log_dir=log_dir, logfile_suffix=logfile_suffix)
+    shell:
+        "set -e && "
+        "start_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "if [[ ! -d {params.master_output_dir} ]] ; then mkdir {params.master_output_dir} ; fi && "
+        "python3 ../src/metagenpipe.py parse-humann3 --output_dir {params.master_output_dir} --output_file genefamilies_log_t.csv --log_transform True {input.gene_family} && "
+        "python3 ../src/metagenpipe.py parse-humann3 --output_dir {params.master_output_dir} --output_file pathabundance_log_t.csv --log_transform True {input.path_abundance} && "
+        "python3 ../src/metagenpipe.py parse-humann3 --output_dir {params.master_output_dir} --output_file pathcoverage_t.csv --log_transform False {input.gene_family} && "
+        "end_dt=$(date '+%d/%m/%Y %H:%M:%S') && "
+        "echo \"INFO: Process started on $start_dt\" &>> {log} && "
+        "echo \"INFO: Process finished on $end_dt\" &>> {log}"

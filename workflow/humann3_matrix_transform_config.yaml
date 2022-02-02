@@ -1,0 +1,5 @@
+master_output_dir: '/project/workflow/results/humann3_matrix'
+gene_family: '../data/raw/jie_fulldata/matrix_humann3/humann3_genefamilies_cpm_joined.tsv'
+path_abundance: '../data/raw/jie_fulldata/matrix_humann3/humann3_pathabundance_cpm_joined.tsv'
+path_coverage: '../data/raw/jie_fulldata/matrix_humann3/humann3_pathcoverage_joined.tsv'
+log_dir: '/project/workflow/logs'
