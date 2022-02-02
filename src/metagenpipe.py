@@ -421,7 +421,7 @@ def parse_humann3( inp_file,
     :return: Nothing. writes transformed matrix in format suitable for Select_Data_sex_complete.ipynb
     """
 
-    inp_mat = pd.read_csv(inp_file, sep='\t', header=1)
+    inp_mat = pd.read_csv(inp_file, sep='\t', header=0, index_col=0)
     transp_mat = inp_mat.T
 
     if log_transform:
@@ -430,7 +430,7 @@ def parse_humann3( inp_file,
                                       columns=transp_mat.columns)
         transp_mat = log_transp_mat
 
-    transp_mat['filename'] = np.array([re.findall(run_id_regex, x)[0] + file_suffix for x in inp_mat['filename'].to_numpy().astype('str')])
+    transp_mat['filename'] = np.array([re.findall(run_id_regex, x)[0] + file_suffix for x in inp_mat.columns.to_numpy().astype('str')])
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)

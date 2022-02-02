@@ -67,7 +67,7 @@ fi
 # humann3 workflow
 # snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
 # transform humann3 outputs
-snakemake --snakefile Snakefile.humann3_matrix_transform_wf -j 1
+# snakemake --snakefile Snakefile.humann3_matrix_transform_wf -j 1
 
 # to run kraken2 at various depths
 
@@ -97,6 +97,9 @@ snakemake --snakefile Snakefile.humann3_matrix_transform_wf -j 1
 # snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1
 # snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/data/raw/jie_fulldata/matrix_kraken/kraken_freq_mat_fulldata.csv' master_output_dir='/project/workflow/results/papermill_jie_kraken_full'
 # snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/data/preprocessed/jie_full_data_metaphlan/freq_mat.csv' master_output_dir='/project/workflow/results/papermill_jie_metaphlan_full'
+snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/workflow/results/humann3_matrix/pathabundance_log_t.csv' master_output_dir='/project/workflow/results/papermill_jie_humann3_pathabundance_full'
+snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/workflow/results/humann3_matrix/pathcoverage_t.csv' master_output_dir='/project/workflow/results/papermill_jie_humann3_pathcoverage_full'
+
 
 # conda deactivate
 
