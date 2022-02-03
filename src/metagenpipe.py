@@ -399,5 +399,43 @@ def run_humann3( inp_files,
         cmd_wrapper(renorm_path_cmd)
 
 
+@cli.command()
+@click.argument('inp_file', nargs=1, type=click.Path(exists=True))
+@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory for output file')
+@click.option('--output_file', default=('humann3_matrix.tsv'), show_default=True, type=str, help='output file name')
+@click.option('--log_transform', default=False, show_default=True, type=bool, help='log transform data')
+@click.option('--run_id_regex', default=('^[A-Z]{3}[0-9]+'), show_default=True, type=str, help='run id regex')
+@click.option('--file_suffix', default=('_1_fastq.gz'), show_default=True, type=str, help='input file suffix')
+def parse_humann3( inp_file,
+                   output_dir=os.getcwd(),
+                   output_file='humann3_matrix.tsv',
+                   log_transform=False,
+                   run_id_regex='^[A-Z]{3}[0-9]+',
+                   file_suffix='_1_fastq.gz'):
+    """
+    Parse humann3 matrix
+    :param inp_file: input file
+    :param output_dir: output directory
+    :param output_file: output file name
+    :param log_transform: whether to log transform data. for CPM data this would be useful
+    :return: Nothing. writes transformed matrix in format suitable for Select_Data_sex_complete.ipynb
+    """
+
+    inp_mat = pd.read_csv(inp_file, sep='\t', header=0, index_col=0)
+    transp_mat = inp_mat.T
+
+    if log_transform:
+        log_transp_mat = pd.DataFrame(data=np.log(transp_mat.to_numpy().astype('float32') + 1.),
+                                      index=transp_mat.index,
+                                      columns=transp_mat.columns)
+        transp_mat = log_transp_mat
+
+    transp_mat['filename'] = np.array([re.findall(run_id_regex, x)[0] + file_suffix for x in inp_mat.columns.to_numpy().astype('str')])
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    transp_mat.to_csv(os.path.join(output_dir, output_file))
+
 if __name__ == '__main__':
     cli(obj={})
