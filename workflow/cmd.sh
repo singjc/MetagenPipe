@@ -97,8 +97,11 @@ fi
 # snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1
 # snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/data/raw/jie_fulldata/matrix_kraken/kraken_freq_mat_fulldata.csv' master_output_dir='/project/workflow/results/papermill_jie_kraken_full'
 # snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/data/preprocessed/jie_full_data_metaphlan/freq_mat.csv' master_output_dir='/project/workflow/results/papermill_jie_metaphlan_full'
+# snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/data/raw/jie_rerun_50K/metaphlan_matrix.csv' master_output_dir='/project/workflow/results/papermill_jie_metaphlan_50K'
+
 snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/workflow/results/humann3_matrix/pathabundance_log_t.csv' master_output_dir='/project/workflow/results/papermill_jie_humann3_pathabundance_full'
 snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/workflow/results/humann3_matrix/pathcoverage_t.csv' master_output_dir='/project/workflow/results/papermill_jie_humann3_pathcoverage_full'
+snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/workflow/results/humann3_matrix/genefamilies_log_t.csv' master_output_dir='/project/workflow/results/papermill_jie_humann3_genefamilies_full'
 
 
 # conda deactivate
