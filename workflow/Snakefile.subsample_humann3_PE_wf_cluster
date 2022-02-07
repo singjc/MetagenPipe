@@ -1,0 +1,194 @@
+#configfile: "humann3_wf_config.yaml"
+
+import os
+
+# setup params, inputs
+raw_data_dir = config["raw_data_dir"]
+run_ids, = glob_wildcards(raw_data_dir + "/{run}_1.fastq")
+# run_ids, read_mates, = glob_wildcards( raw_data_dir + "/{run}_{read_mate}.fastq") 
+# run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
+#run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
+read_mates = ["1", "2"]
+master_output_dir=config["master_output_dir"]
+reads_subsample=config["reads_subsample"]
+seqtk_seed=config["seqtk_seed"]
+nthreads=config["nthreads"]
+logfile_suffix='_' + os.path.basename(master_output_dir)
+log_dir=config["log_dir"]
+
+
+rule all:
+	input:
+		subsample_fastq=expand("{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_{read_mate}.fastq", master_output_dir=master_output_dir, run=run_ids, read_mate=read_mates),
+		kneaddata=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_1.fastq", master_output_dir=master_output_dir, run=run_ids),
+		kraken=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_{read_mate}.fastq", run=run_ids, read_mate=read_mates, master_output_dir=master_output_dir),
+		matrix=expand("{master_output_dir}/matrix/freq_mat.csv", master_output_dir=master_output_dir),
+		cat_out = expand("{master_output_dir}/cat_files/{run}_seqt.subsampled_1_kneaddata_paired_concat.fastq", master_output_dir=master_output_dir, run=run_ids),
+		genefamily_files = expand("{master_output_dir}/humann3_{run}.done", master_output_dir=master_output_dir, run=run_ids),
+		gene_fam_mat = "matrix_human.done"
+
+rule subsample_fastq:
+	input:
+		fastq = "data/raw/jie_et_al/{run}_{read_mate}.fastq"
+	output:
+		check=touch("{master_output_dir}/raw_subsampled/subsample_fastq_{run}_{read_mate}.done"),
+		subsampled_fastq = "{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_{read_mate}.fastq"
+	params:
+		subsample_fraction=reads_subsample,
+		output_dir=expand("{master_output_dir}/raw_subsampled/", master_output_dir=master_output_dir),
+		output_in_container="{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_{read_mate}.fastq",
+		nthreads=nthreads,
+		seqtk_seed=seqtk_seed
+	threads: 1
+	#conda:
+		#"envs/seqtk.yml"
+	singularity:
+		#"docker://florabioworks/microbiome_ubuntu20:cluster"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+		#"python /project/src/metagenpipe.py run-seqtk --subsample_fraction={params.subsample_fraction} --rng_seed={params.seqtk_seed} --output_dir={params.output_dir} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+		"seqtk sample -s {params.seqtk_seed} {input.fastq} {params.subsample_fraction} > {params.output_in_container}"
+
+rule kneaddata:
+	input:
+		# fastq_1 = "{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_1.fastq",
+		# fastq_2 = "{master_output_dir}/raw_subsampled/{run}_seqt.subsampled_2.fastq"
+		fastq_1 = "data/raw/jie_et_al/{run}_seqt.subsampled_1.fastq",
+		fastq_2 = "data/raw/jie_et_al/{run}_seqt.subsampled_2.fastq"
+	output:
+		check=touch("{master_output_dir}/kneadeddata/kneaddata_{run}.done"),
+		paired_fastq_1="{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_1.fastq",
+		paired_fastq_2="{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_2.fastq"	
+		# unmatched_fastq="{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_unmatched_1.fastq"	
+		# paired_contam_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_hg37dec_v0.1_bowtie2_paired_contam_{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		# unmatched_contam_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_hg37dec_v0.1_bowtie2_unmatched_{read_mate}_contam.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		# trimmed_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata.trimmed.{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir),
+		# trimmed_single_fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata.trimmed.single.{read_mate}.fastq", run=run_ids, read_mate=read_mate, master_output_dir=master_output_dir)
+	params:
+		reference_db="data/raw/kneaddata_db/hg37dec_v0.1.4.bt2",
+		output_dir=expand("{master_output_dir}/kneadeddata/", master_output_dir=master_output_dir),
+		trimmomatic="/src/anaconda/envs/microbiome/share/trimmomatic-0.39-2/",
+		bowtie_path="/src/anaconda/envs/microbiome/bin/bowtie2"
+	threads: 15
+	singularity:
+		#"docker://whitleyo/microbiome_ubuntu20:latest"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && PS=${{PS:-}} && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+		"kneaddata --input {input.fastq_1} --input {input.fastq_2} --threads {threads} --bypass-trf --trimmomatic {params.trimmomatic} --reference-db {params.reference_db} --output {params.output_dir} -q=phred33 --trimmomatic-options=SLIDINGWINDOW:4:30 --store-temp-output --decontaminate-pairs lenient --bowtie2-options='--very-sensitive'"
+		# "python /project/src/metagenpipe.py run-kneaddata --paired_end --reference_db={params.reference_db} --output_dir={params.output_dir} --trimmomatic={params.trimmomatic} --nthreads={params.nthreads} {input.fastq} &>> {log} &&"
+
+rule kraken2:
+	input:
+		check=rules.kneaddata.output.check,
+		# fastq=expand("{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_{read_mate}.fastq", run=run_ids, read_mate=read_mates, master_output_dir=master_output_dir)
+		fastq=["{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_1.fastq", "{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_2.fastq"]
+	output:
+		#check=temp(touch("kraken2.done")),
+		#read_files = expand("results/kraken2/{run}_seqt.subsampled_1_kneaddata_paired_read_output.txt", run=run_ids, master_output_dir=master_output_dir),
+		freq_files = "{master_output_dir}/kraken2/{run}_seqt.subsampled_1_kneaddata_paired_freq_output.txt"
+	params:
+		input_type="fastq",
+		output_dir="{master_output_dir}/kraken2",
+		reference_db="data/raw/kraken2_db",
+		nthreads=nthreads
+		#dbname="data/raw/kraken2db"
+	threads: 15
+	singularity:
+		#"docker://whitleyo/microbiome_ubuntu20:latest"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+		"python src/metagenpipe.py run-kraken2 --paired_end=True --db_use={params.reference_db} --output_dir={params.output_dir} --nthreads {threads} {input.fastq}"
+
+rule matrix:
+	input:
+		freq_files = expand("{master_output_dir}/kraken2/{run}_seqt.subsampled_1_kneaddata_paired_freq_output.txt", run=run_ids, master_output_dir=master_output_dir) #rules.kraken2.output.freq_files
+	output:
+		check=temp(touch("{master_output_dir}/matrix.done")),
+		count_mat = "{master_output_dir}/matrix/count_mat.csv", 
+		freq_mat = "{master_output_dir}/matrix/freq_mat.csv"
+	params:
+		output_dir = "{master_output_dir}/matrix", 
+		count_mat = "count_mat.csv",
+		freq_mat = "freq_mat.csv"
+	threads: 1
+	singularity:
+		#"docker://whitleyo/microbiome_ubuntu20:latest"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+ 		"python src/metagenpipe.py parse-kraken2-multi --output_dir={params.output_dir} --freq_mat_file={params.freq_mat} --count_mat_file={params.count_mat} {input.freq_files}"
+
+# note: we are using unmatched fastq files here to see if we can run the pipeline on populated fastq files.
+# for some reason kneaddata is putting all the reads passing QC as unmatched 
+rule cat_files:
+	input:
+		# fastq=["{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_1.fastq", "{master_output_dir}/kneadeddata/{run}_seqt.subsampled_1_kneaddata_paired_2.fastq"]
+		fastq=[rules.kneaddata.output.paired_fastq_1, rules.kneaddata.output.paired_fastq_2]
+	output:
+		check=touch("{master_output_dir}/cat_files_{run}.done"),	
+		fastq_out = "{master_output_dir}/cat_files/{run}_seqt.subsampled_1_kneaddata_paired_concat.fastq"
+	params:
+		output_dir=expand("{master_output_dir}/cat_files", master_output_dir=master_output_dir)
+	threads: 1
+	singularity:
+		#"docker://whitleyo/microbiome_ubuntu20:latest"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && PS=${{PS:-}} && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+		"python src/metagenpipe.py concat-reads --output_dir={params.output_dir} {input.fastq}"
+		
+		
+
+rule humann3:
+	input:
+		check=rules.cat_files.output.check,
+		fastq=rules.cat_files.output.fastq_out
+	output:
+		check=touch("{master_output_dir}/humann3_{run}.done")
+	params:
+		output_dir=expand("{master_output_dir}/humann3", master_output_dir=master_output_dir),
+		nthreads=nthreads,
+		nucleotide_database="data/raw/humann3_db/chocophlan",
+		protein_database="data/raw/humann3_db/uniref",
+		genefamily_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_genefamilies_cpm.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathabundance_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_pathabundance_cpm.tsv", run=run_ids, master_output_dir=master_output_dir),
+		pathcoverage_files = expand("{master_output_dir}/humann3/{run}_seqt.subsampled_1_kneaddata_paired_concat_pathcoverage.tsv", run=run_ids, master_output_dir=master_output_dir)
+	threads: 15
+	singularity:
+		#"docker://whitleyo/microbiome_ubuntu20:latest"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		"set +eu && PS=${{PS:-}} && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+		"python src/metagenpipe.py run-humann3 --output_dir={params.output_dir} --nthreads={params.nthreads} --nucleotide_database={params.nucleotide_database} --protein_database={params.protein_database} {input.fastq}"
+
+rule matrix_human:
+	input:
+		check=expand("{master_output_dir}/humann3_{run}.done", master_output_dir=master_output_dir, run=run_ids)
+	output:
+		check=touch("matrix_human.done")
+	params:
+		inp_dir=rules.humann3.params.output_dir,
+		# output_dir = expand("{master_output_dir}/humann3_merged", master_output_dir=master_output_dir),
+		gene_fam_mat = expand("{master_output_dir}/humann3_merged/humann3_genefamilies_cpm_joined.tsv", master_output_dir=master_output_dir),
+		pathabundance_mat = expand("{master_output_dir}/humann3_merged/humann3_pathabundance_cpm_joined.tsv", master_output_dir=master_output_dir),
+		pathcoverage_mat = expand("{master_output_dir}/humann3_merged/humann3_pathcoverage_joined.tsv", master_output_dir=master_output_dir)
+	threads: 1
+	singularity:
+		#"docker://whitleyo/microbiome_ubuntu20:latest"
+		"./.snakemake/singularity/florabioworks.simg"
+	shell:
+		# "if [[! -d {output.output_dir} ]]; then mkdir {output.output_dir} fi && "
+		"set +eu && PS=${{PS:-}} && source /src/anaconda/etc/profile.d/conda.sh && set -eu && "
+		"set +eu && conda activate microbiome && set -eu && "
+		"humann_join_tables -v --input {params.inp_dir} --output {params.gene_fam_mat} --file_name genefamilies_cpm && "
+		"humann_join_tables -v --input {params.inp_dir} --output {params.pathabundance_mat} --file_name pathabundance_cpm && "
+		"humann_join_tables -v --input {params.inp_dir} --output {params.pathcoverage_mat} --file_name pathcoverage"

@@ -1,0 +1,44 @@
+run_ids, = glob_wildcards("data/raw/jie_et_al/{run}.accession")
+rule all:
+    input:
+        tmp_acc_ids="tmp_accession_file.done",
+        sra_download_complete=expand("sra_download_{run}.done", run=run_ids)
+
+rule tmp_accession_file:
+    input:
+        accession_file="data/raw/jie_et_al/SRR_Acc_List.txt"
+    output:
+        check=temp(touch("tmp_accession_file.done"))
+    log:
+        "logs/tmp_accession_file.log"
+    shell:
+        """
+        for srr in $(cat {input.accession_file})
+        do
+            # make a temp file with accession id
+            touch data/raw/jie_et_al/$srr.accession
+        done
+        """
+
+rule sra_download:
+    input:
+        rules.tmp_accession_file.output.check,
+        accession="data/raw/jie_et_al/{run}.accession"
+    output:
+        check=temp(touch("sra_download_{run}.done"))
+    params:
+        output_dir="data/raw/jie_et_al/",
+        extra_args="-I --gzip --split-files"
+    shell:
+        "module load nixpkgs/16.09 && module load sra-toolkit/2.9.6 && "
+        "cache=$SLURM_TMPDIR/{wildcards.run} && "
+        "ls -ltrh {params.output_dir}/{wildcards.run}/* && "
+        "echo 'copying .sra file to $cache' && rsync --recursive -v -axvH --no-g --no-p {params.output_dir}/{wildcards.run}/* $cache/ && ls -ltrhR $cache && "
+        "fasterq-dump --split-files -O $cache {wildcards.run} && "
+        "chown -R singjust:rrg-hroest $cache && "
+        "ls -ltrhR $cache && echo 'Transferring files...' && "
+        "rsync --recursive -v -axvH --no-g --no-p $cache/*.fastq {params.output_dir}/"
+        #""
+        #"""accessions=$(awk -F ',' '{{gsub(/"/,"",$1); print $1}}' {input.accession_file} | tail -n+2 | sort)  && """
+        #"vdb-config --interactive &&"
+        #"python /project/src/metagenpipe.py sra-downloader --download_dir={params.output_dir} --extra_args=\"{params.extra_args}\" $accessions  &>> {log} && "

@@ -1,0 +1,44 @@
+#configfile: "humann3_wf_config.yaml"
+
+import os
+
+# setup params, inputs
+raw_data_dir = config["raw_data_dir"]
+run_ids, = glob_wildcards(raw_data_dir + "/{run}_1.fastq")
+# run_ids, read_mates, = glob_wildcards( raw_data_dir + "/{run}_{read_mate}.fastq") 
+# run_ids = ["ERR2017411", "ERR2017412", "ERR2017413"]
+#run_ids, = glob_wildcards("results/raw_subsampled/{run}_seqt.subsampled.fastq")
+read_mates = ["1", "2"]
+master_output_dir=config["master_output_dir"]
+reads_subsample=config["reads_subsample"]
+seqtk_seed=config["seqtk_seed"]
+nthreads=config["nthreads"]
+logfile_suffix='_' + os.path.basename(master_output_dir)
+log_dir=config["log_dir"]
+
+
+rule all:
+	input:
+		kneaddata = expand("{master_output_dir}/kneadeddata/kneadeddata_patch_done/kneadeddata_{run}_{read_mates}.done", master_output_dir=master_output_dir, run=run_ids, read_mates=read_mates),
+		cat_out = expand("{master_output_dir}/cat_files/cat_files_patch_done/cat_files_{run}.done", master_output_dir=master_output_dir, run=run_ids)
+
+rule patch_kneaddata:
+	input:
+		fastq = "{master_output_dir}/kneadeddata/{run}_1_kneaddata_paired_{read_mates}.fastq"
+	output:
+		check=touch("{master_output_dir}/kneadeddata/kneadeddata_patch_done/kneadeddata_{run}_{read_mates}.done")
+		# patched_fastq="{master_output_dir}/kneadeddata/{run}_1_kneaddata_paired_{read_mates}_patched.fastq"
+	threads: 1
+	shell:
+		"sed -i 's/^+.*$/+/g' {input.fastq}"
+
+rule patch_cat_files:
+	input:
+		fastq = "{master_output_dir}/cat_files/{run}_1_kneaddata_paired_concat.fastq"
+	output:
+		check=touch("{master_output_dir}/cat_files/cat_files_patch_done/cat_files_{run}.done")
+		# patched_fastq = "{master_output_dir}/cat_files/{run}_1_kneaddata_paired_concat_patched.fastq"
+	threads: 1
+	shell:
+		"sed -i 's/^+.*$/+/g' {input.fastq}"
+
