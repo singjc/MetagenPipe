@@ -230,36 +230,29 @@ def parse_metaphlan_multi( inp_files, output_dir='./', outfile='relative_abundan
     :param output_dir: output directory to store matrix
     :return: writes matrix to file
     """
-    for i in range(len(inp_files)):
-        input_file_i = inp_files[i]
-        df_i = parse_metaphlan_file(input_file_i)
-        if i == 0:
-            # df_c = dataframe, combined
-            df_c = df_i
+
+    m = 0
+
+    for f in inp_files:
+        df = parse_metaphlan_file(f)
+        if df.shape[0] > 0:
+            df['filename'] = np.repeat(os.path.basename(f), df.shape[0])
         else:
-            cols_c = df_c.columns.to_numpy().astype('str')
-            cols_i = df_i.columns.to_numpy().astype('str')
-            diff_c_i = np.setdiff1d(cols_c, cols_i)
-            diff_i_c = np.setdiff1d(cols_i, cols_c)
-            if len(diff_c_i) > 0:
-                for j in len(diff_c_i):
-                    diff_c_i_j = diff_c_i[j]
-                    df_i[diff_c_i_j] = np.array([0.0], dtype='float32')
+            warn('file {} lacks any detected taxa, skipping'.format(f))
+            continue
 
-            if len(diff_i_c) > 0:
-                for j in len(diff_i_c):
-                    diff_i_c_j = diff_i_c[j]
-                    df_c[diff_i_c_j] = np.array([0.0], dtype='float32')
-            # put columns in correct order, then append.
-            # by end of 2 if statements, both df_c and df_i should have
-            # same columns
-            sorted_cols = df_c.columns.to_numpy().astype('str').sort()
-            df_c = df_c.loc[:, sorted_cols]
-            df_i = df_i.loc[:, sorted_cols]
-            df_c = df_c.append(df_i)
+        if m == 0:
+            m += 1
+            master_df = df
+        else:
+            master_df = master_df.append(df)
 
-    df_c.to_csv(os.path.join(output_dir, outfile))
+    freq_df = master_df.loc[:, ['freq', 'tax_name', 'filename']]
 
+    click.echo(f"INFO: freq_df shape:{freq_df.shape}")
+    print(freq_df.head())
+    freq_mat_df = freq_df.pivot(index='filename', columns='tax_name', values='freq')
+    freq_mat_df.to_csv(os.path.join(output_dir, outfile))
 
 @cli.command()
 @click.argument('inp_files', nargs=-1, type=click.Path(exists=True))
@@ -293,7 +286,11 @@ def parse_kraken2_multi( inp_files, output_dir='./', freq_mat_file='relative_abu
         tax_level = df['tax_level'].to_numpy().astype('str')
         idx_keep = np.array([re.match(tax_level_select, x) is not None for x in tax_level])
         df = df.iloc[idx_keep, :]
-        df['filename'] = np.repeat(os.path.basename(f), df.shape[0])
+        if df.shape[0] > 0:
+            df['filename'] = np.repeat(os.path.basename(f), df.shape[0])
+        else:
+            warn('file {} lacks any detected taxa, skipping'.format(f))
+            continue
 
         if m == 0:
             m += 1
@@ -401,6 +398,44 @@ def run_humann3( inp_files,
         renorm_path_cmd = "humann_renorm_table --input {} --output {} --units cpm".format(path_abundance_file, path_abundance_renorm)
         cmd_wrapper(renorm_path_cmd)
 
+
+@cli.command()
+@click.argument('inp_file', nargs=1, type=click.Path(exists=True))
+@click.option('--output_dir', default=(os.getcwd()), show_default=True, type=str, help='Directory for output file')
+@click.option('--output_file', default=('humann3_matrix.tsv'), show_default=True, type=str, help='output file name')
+@click.option('--log_transform', default=False, show_default=True, type=bool, help='log transform data')
+@click.option('--run_id_regex', default=('^[A-Z]{3}[0-9]+'), show_default=True, type=str, help='run id regex')
+@click.option('--file_suffix', default=('_1_fastq.gz'), show_default=True, type=str, help='input file suffix')
+def parse_humann3( inp_file,
+                   output_dir=os.getcwd(),
+                   output_file='humann3_matrix.tsv',
+                   log_transform=False,
+                   run_id_regex='^[A-Z]{3}[0-9]+',
+                   file_suffix='_1_fastq.gz'):
+    """
+    Parse humann3 matrix
+    :param inp_file: input file
+    :param output_dir: output directory
+    :param output_file: output file name
+    :param log_transform: whether to log transform data. for CPM data this would be useful
+    :return: Nothing. writes transformed matrix in format suitable for Select_Data_sex_complete.ipynb
+    """
+
+    inp_mat = pd.read_csv(inp_file, sep='\t', header=0, index_col=0)
+    transp_mat = inp_mat.T
+
+    if log_transform:
+        log_transp_mat = pd.DataFrame(data=np.log(transp_mat.to_numpy().astype('float32') + 1.),
+                                      index=transp_mat.index,
+                                      columns=transp_mat.columns)
+        transp_mat = log_transp_mat
+
+    transp_mat['filename'] = np.array([re.findall(run_id_regex, x)[0] + file_suffix for x in inp_mat.columns.to_numpy().astype('str')])
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    transp_mat.to_csv(os.path.join(output_dir, output_file))
 
 if __name__ == '__main__':
     cli(obj={})

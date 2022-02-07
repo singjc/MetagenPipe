@@ -2,8 +2,8 @@
 # set for failure on any error
 set -e
 # Activate Conda env
-source /src/anaconda/etc/profile.d/conda.sh
-conda activate microbiome
+# source /src/anaconda/etc/profile.d/conda.sh
+# conda activate microbiome
 
 
 
@@ -50,20 +50,26 @@ fi
 # snakemake --snakefile Snakefile.sradownload_wf -j 2
 #snakemake --snakefile Snakefile.sradownload_subs_wf -j 2
 
-# humann3 workflow
-snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
 
 # Preprocessing Workflow
 
-# snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=50000
+# snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE" reads_subsample=100000
+#snakemake --snakefile Snakefile.subsample_kneaddata_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kneaddata_PE_microbiome_ubuntu20" reads_subsample=100000 
 # snakemake --snakefile Snakefile.subsample_kraken2_PE_wf -j 2  --config seqtk_seed=32 nthreads=2 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_PE" reads_subsample=50000
 #snakemake --snakefile Snakefile.subsample_wf -j 6
 # to unlock directory
 # snakemake --snakefile Snakefile.subsample_kraken2_wf --unlock True
+# metaphlan parser
+# snakemake --snakefile Snakefile.metaphlan_parse_wf -j 1
 
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
 
-# to run at various depths
+# humann3 workflow
+# snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
+# transform humann3 outputs
+# snakemake --snakefile Snakefile.humann3_matrix_transform_wf -j 1
+
+# to run kraken2 at various depths
 
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=32 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10M" reads_subsample=10000000
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=64 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_5M" reads_subsample=5000000
@@ -83,9 +89,20 @@ snakemake --snakefile Snakefile.subsample_humann3_PE_wf -j 2
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=93 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed93" reads_subsample=10000
 # snakemake --snakefile Snakefile.subsample_kraken2_wf -j 8  --config seqtk_seed=87 log_dir=$log_dir master_output_dir="${top_results_dir}/kraken2_10K_seed87" reads_subsample=10000
 
+
+
 # machine learning notebook workflow automated through papermill
 # snakemake --snakefile Snakefile.papermill_compile_wf -j 1
 # papermill workflow with data preparation + analyses separated
 # snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1
+# snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/data/raw/jie_fulldata/matrix_kraken/kraken_freq_mat_fulldata.csv' master_output_dir='/project/workflow/results/papermill_jie_kraken_full'
+# snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/data/preprocessed/jie_full_data_metaphlan/freq_mat.csv' master_output_dir='/project/workflow/results/papermill_jie_metaphlan_full'
+# snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/data/raw/jie_rerun_50K/metaphlan_matrix.csv' master_output_dir='/project/workflow/results/papermill_jie_metaphlan_50K'
 
-conda deactivate
+snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/workflow/results/humann3_matrix/pathabundance_log_t.csv' master_output_dir='/project/workflow/results/papermill_jie_humann3_pathabundance_full'
+snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/workflow/results/humann3_matrix/pathcoverage_t.csv' master_output_dir='/project/workflow/results/papermill_jie_humann3_pathcoverage_full'
+snakemake --snakefile Snakefile.papermill_compile_analysis_suite_wf -j 1 --config inp_mat_file='/project/workflow/results/humann3_matrix/genefamilies_log_t.csv' master_output_dir='/project/workflow/results/papermill_jie_humann3_genefamilies_full'
+
+
+# conda deactivate
+

@@ -13,6 +13,7 @@ RUN dpkg -i /misc_files/jdk-15.0.2_linux-x64_bin.deb
 RUN apt-get install -y unzip                                                                                            
 RUN apt-get install -y make                                                                                             
 RUN apt-get install -y g++                                                                                              
+RUN apt-get install -y rsync
 RUN git clone https://github.com/DerrickWood/kraken2
 RUN mv kraken2 /src/
 ENV PATH="$PATH:/src/kraken2"
