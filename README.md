@@ -1,4 +1,6 @@
-# Medicine By Design Microbiome Project
+# MetagenPipe
+
+Medicine By Design Microbiome Project
 
 ## Overview:
 
