@@ -18,3 +18,7 @@ Explore and attempt to improve upon classification of healthy and nonhealthy pat
 * Dockerfile: makes docker image for this project
 * build_image.sh: runs command to build image
 * run_docker_it.sh: run an interactive session in Docker container. Note you might have to change some filepaths in this file for it to work on your machine
+
+## Citation
+
+Sing, J. C., Whitley, O., &amp; Davis, S. (2023). Diagnostic Potential of Shallow Depth Gut Metagenomics Sequencing for Atherosclerotic Cardiovascular Disease Risk Stratification. https://doi.org/10.1101/2023.10.02.560614 
