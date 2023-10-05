@@ -1,5 +1,8 @@
 # MetagenPipe
 
+![image](https://github.com/singjc/MetagenPipe/assets/32938975/15c1ca54-95b6-471d-8910-7d8f7b03d038)
+
+
 Medicine By Design Microbiome Project
 
 ## Overview:
